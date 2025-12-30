@@ -139,7 +139,7 @@ class MintCompiler
     private function compileEcho(string $text): string
     {
         return preg_replace_callback(
-            '/\{([^}]+)\}/',
+            '/\{\{([^}]+)\}\}/',
             fn($m) => "<?php echo {$m[1]}; ?>",
             $text
         );
