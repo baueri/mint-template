@@ -1,5 +1,5 @@
 {
-    "name": "ivan/mint-template",
+    "name": "baueri/mint-template",
     "type": "library",
     "autoload": {
         "psr-4": {
