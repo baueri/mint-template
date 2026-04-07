@@ -25,12 +25,14 @@ class Cache
 
     public function write(string $template, string $php): string
     {
-        if (!is_dir($this->path)) {
+        if (! is_dir($this->path)) {
             mkdir($this->path, 0777, true);
         }
 
+        $prefix = "<?php // rendered template of: {$this->path}/{$template} ?>" . PHP_EOL;
+
         $file = $this->compiledPath($template);
-        file_put_contents($file, $php);
+        file_put_contents($file, $prefix . $php);
 
         return $file;
     }

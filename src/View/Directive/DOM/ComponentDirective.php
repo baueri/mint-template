@@ -1,4 +1,5 @@
 <?php
+
 namespace Mint\View\Directive\DOM;
 
 use DOMElement;
@@ -18,7 +19,7 @@ class ComponentDirective implements DOMDirective
             throw new \RuntimeException('<x-component> requires a name attribute with full class namespace');
         }
 
-        // Replace double backslashes with single backslashes
+        // Fix escaped namespace
         $class = str_replace('\\\\', '\\', $class);
 
         $props = [];
@@ -26,10 +27,10 @@ class ComponentDirective implements DOMDirective
             if (str_starts_with($attr->name, ':')) {
                 $key = substr($attr->name, 1);
 
-                // value like "{$user}" → "$user"
-                preg_match('/\{(.+?)\}/', $attr->value, $m);
-
-                $props[$key] = $m[1];
+                // "{$user}" → "$user"
+                if (preg_match('/\{(.+?)\}/', $attr->value, $m)) {
+                    $props[$key] = $m[1];
+                }
             }
         }
 
@@ -41,24 +42,25 @@ class ComponentDirective implements DOMDirective
         $propsArray = implode(",\n    ", $propsPhp);
 
         return <<<PHP
-<?php
-\$__mint_props = new \Mint\View\Context([
-    {$propsArray}
-]);
-\$component = new \\{$class}();
-echo \$component->render(\$__mint_props);
-?>
-PHP;
+        <?php
+            \$__mint_props = new \\Mint\\View\\Context([
+                {$propsArray}
+            ], \$__mint_view);
+
+            \$component = new \\{$class}();
+
+            echo \$component->render(\$__mint_props);
+        ?>
+        PHP;
     }
 
     public function compileClose(DOMElement $node): string
     {
-        // self-closing component → no close output
         return '';
     }
 
     public function isSelfClosing(): bool
     {
-        return true; // children should NOT be compiled
+        return true;
     }
 }

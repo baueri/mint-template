@@ -6,32 +6,48 @@ namespace Mint\View;
 
 class Context
 {
-    public function __construct(
-        private array $data = []
-    ) {}
+    protected array $data;
+    protected MintView $view;
+    protected ?string $slot;
 
-    public function with(string $key, mixed $value): self
+    public function __construct(array $data, MintView $view, ?string $slot = null)
     {
-        $clone = clone $this;
-        $clone->data[$key] = $value;
-        return $clone;
+        $this->data = $data;
+        $this->view = $view;
+        $this->slot = $slot;
     }
 
-    public function resolve(string $path): mixed
+    public function resolve(string $key, mixed $default = null): mixed
     {
-        $segments = preg_split('/->|\./', $path);
-        $value = $this->data[array_shift($segments)] ?? null;
+        return $this->data[$key] ?? $default;
+    }
 
-        foreach ($segments as $seg) {
-            if (is_object($value) && isset($value->$seg)) {
-                $value = $value->$seg;
-            } elseif (is_array($value) && array_key_exists($seg, $value)) {
-                $value = $value[$seg];
-            } else {
-                return null;
-            }
+    public function all(): array
+    {
+        return $this->data;
+    }
+
+    public function slot(): ?string
+    {
+        return $this->slot;
+    }
+
+    public function view(): ContextView
+    {
+        return new ContextView($this);
+    }
+
+    public function withSlot(array $data): array
+    {
+        if ($this->slot !== null && !array_key_exists('slot', $data)) {
+            $data['slot'] = $this->slot;
         }
 
-        return $value;
+        return $data;
+    }
+
+    public function baseView(): MintView
+    {
+        return $this->view;
     }
 }

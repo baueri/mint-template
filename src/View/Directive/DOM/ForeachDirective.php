@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace Mint\View\Directive\DOM;
 
 use DOMElement;
+use Mint\View\MintCompiler;
 
 class ForeachDirective implements DOMDirective
 {
+    public function __construct(
+        protected readonly MintCompiler $compiler
+    ) {}
+
     public function supports(DOMElement $node): bool
     {
         return $node->hasAttribute('x:foreach');
@@ -15,13 +20,16 @@ class ForeachDirective implements DOMDirective
 
     public function compileOpen(DOMElement $node): string
     {
-        // "{$users as $user}"
-        preg_match('/\{(.+?)\s+as\s+(.+?)\}/', $node->getAttribute('x:foreach'), $m);
+        preg_match('/^\{(.+?)\}$/', $node->getAttribute('x:foreach'), $m);
+        $expr = $m[1];
 
-        $collection = trim($m[1]);
-        $item = trim($m[2]);
+        // klónozd a node-ot x:foreach nélkül
+        $clone = $node->cloneNode(true);
+        $clone->removeAttribute('x:foreach');
 
-        return "<?php foreach ({$collection} as {$item}): ?>";
+        $inner = $this->compiler->compileNode($clone);
+
+        return "<?php foreach ({$expr}): ?>{$inner}";
     }
 
     public function compileClose(DOMElement $node): string
@@ -31,6 +39,6 @@ class ForeachDirective implements DOMDirective
 
     public function isSelfClosing(): bool
     {
-        return false; // must compile children inside foreach
+        return true;
     }
 }

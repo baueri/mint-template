@@ -17,6 +17,8 @@ use Mint\View\Directive\DOM\WrapDirective;
 use Mint\View\Directive\DOM\YieldDirective;
 use Mint\View\Directive\Text\IfDirective as TextIfDirective;
 use Mint\View\Directive\Text\TextDirectiveInterface;
+use Mint\View\Directive\DOM\CustomComponentDirective;
+use Mint\View\Directive\Text\ForeachDirective as TextForeachDirective;
 
 class MintCompiler
 {
@@ -34,7 +36,7 @@ class MintCompiler
 
         $this->domDirectives = [
             new IfDirective(),
-            new ForeachDirective(),
+            new ForeachDirective($this),
             new ComponentDirective(),
             new SectionDirective($this, $this->context),
             new YieldDirective($this->context),
@@ -42,7 +44,8 @@ class MintCompiler
         ];
 
         $this->textDirectives = [
-            new TextIfDirective()
+            new TextIfDirective(),
+            new TextForeachDirective()
         ];
     }
 
@@ -52,6 +55,11 @@ class MintCompiler
     public function registerDirective(DOMDirective $directive): void
     {
         $this->domDirectives[] = $directive;
+    }
+
+    public function registerComponentDirective(string $name, string $class)
+    {
+        $this->registerDirective(new CustomComponentDirective($name, $class));
     }
 
     /**
@@ -122,7 +130,10 @@ class MintCompiler
             if ($removeDirective && str_starts_with($attr->name, 'x:')) {
                 continue;
             }
-            $attrs .= " {$attr->name}=\"{$attr->value}\"";
+
+            $value = $this->compileAttribute($attr->value);
+
+            $attrs .= " {$attr->name}=\"{$value}\"";
         }
 
         $html = "<{$tag}{$attrs}>";
@@ -134,6 +145,15 @@ class MintCompiler
         $html .= "</{$tag}>";
 
         return $html;
+    }
+
+    private function compileAttribute(string $value): string
+    {
+        return preg_replace_callback(
+            '/\{\{([^}]+)\}\}/',
+            fn($m) => '<?php echo ' . trim($m[1]) . '; ?>',
+            $value
+        );
     }
 
     private function compileEcho(string $text): string
