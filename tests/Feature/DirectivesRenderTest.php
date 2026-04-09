@@ -290,6 +290,34 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('X', $out);
         $this->assertStringContainsString('Y', $out);
     }
+
+    public function testMintWrapPassesPropsIntoLayoutRender(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put(
+            $viewsDir,
+            'layout.php',
+            '<html><body class="{{{ $bodyClass ?? \'\' }}}"><main><mint-yield name="layout"/></main></body></html>'
+        );
+
+        TempViews::put(
+            $viewsDir,
+            'page.php',
+            '<mint-wrap view="layout" :body-class="{ $wrapClass }"><p>Hi</p></mint-wrap>'
+        );
+
+        $compiler = new MintCompiler($viewsDir);
+
+        $out = $this->render($compiler, $viewsDir, $cacheDir, 'page.php', [
+            'wrapClass' => 'page',
+            'bodyClass' => 'from-data',
+        ]);
+
+        $this->assertStringContainsString('<body class="page">', $out);
+        $this->assertStringContainsString('<p>Hi</p>', $out);
+    }
 }
 
 final class HelloComponent extends Component

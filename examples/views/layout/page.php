@@ -1,5 +1,5 @@
 
-<mint-wrap view="layout">
+<mint-wrap view="layout" :body-class="{'demo-layout'}">
   <mint-section name="heading">
     <h1>{{ $title }}</h1>
     <p>Example layout page rendered through <code>mint-wrap</code>.</p>

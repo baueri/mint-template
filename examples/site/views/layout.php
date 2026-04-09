@@ -6,7 +6,7 @@
     <title>{{ $title }} · Mint</title>
     <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body>
+<body class="{{ $bodyClass ?? '' }}">
 <a class="skip-link" href="#main">Skip to content</a>
 
 <div class="site">

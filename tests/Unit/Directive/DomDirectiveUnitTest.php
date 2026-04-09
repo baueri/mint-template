@@ -7,6 +7,7 @@ namespace Baueri\Mint\Tests\Unit\Directive;
 use Baueri\Mint\Directive\DOM\CustomComponentDirective;
 use Baueri\Mint\Directive\DOM\IfDirective;
 use Baueri\Mint\Directive\DOM\IncludeDirective;
+use Baueri\Mint\Directive\DOM\WrapDirective;
 use Baueri\Mint\Directive\DOM\YieldDirective;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
@@ -182,6 +183,28 @@ final class DomDirectiveUnitTest extends TestCase
         $this->assertStringContainsString("'a' =>", $php);
         $this->assertStringContainsString('$override', $php);
         $this->assertStringContainsString("'c' => \$c", $php);
+    }
+
+    public function testMintWrapDirectiveMergesPropsIntoLayoutRender(): void
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        libxml_use_internal_errors(true);
+        $dom->loadHTML(
+            '<?xml encoding="UTF-8"><mint-wrap view="layout" :body-class="{ $c }"></mint-wrap>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        $node = $dom->documentElement;
+
+        $compiler = new \Baueri\Mint\MintCompiler(sys_get_temp_dir());
+        $ctx = new \Baueri\Mint\RenderContext();
+        $d = new WrapDirective($compiler, $ctx);
+
+        $php = $d->compileClose($node);
+        $this->assertStringContainsString("\$__mint_view->render('layout.php'", $php);
+        $this->assertStringContainsString("'bodyClass' =>", $php);
+        $this->assertStringContainsString('$c', $php);
+        $this->assertStringContainsString("'__mint_env' => \$__mint_env", $php);
     }
 }
 

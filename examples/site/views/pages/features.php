@@ -1,4 +1,4 @@
-<mint-wrap view="layout">
+<mint-wrap view="layout" :body-class="{'site-features'}">
     <article class="article">
         <header class="article__header">
             <h1 class="article__title">What you can build</h1>

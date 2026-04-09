@@ -1,4 +1,4 @@
-<mint-wrap view="layout">
+<mint-wrap view="layout" :body-class="{'site-home'}">
     <section class="hero">
         <p class="hero__eyebrow">Template compiler</p>
         <h1 class="hero__title">Mint, in full color</h1>

@@ -2,7 +2,7 @@
   <head>
     <title>{{ $title }}</title>
   </head>
-  <body>
+  <body class="{{{ $bodyClass ?? '' }}}">
     <header>
       <nav>
         <a href="#" aria-current="page">Home</a>

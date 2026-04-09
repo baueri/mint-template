@@ -1,3 +1,4 @@
+<mint-wrap view="layout" :body-class="{'demo-basic'}">
 <div>
   <h1>Hello {{ $name }}</h1>
 
@@ -34,3 +35,4 @@
     <mint-include name="partials/price-card.php" :props="{$title, $price, $badge}" />
   </div>
 </div>
+</mint-wrap>
