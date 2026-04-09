@@ -11,6 +11,7 @@ use DOMText;
 use Baueri\Mint\Directive\DOM\DOMDirective;
 use Baueri\Mint\Directive\DOM\ForeachDirective;
 use Baueri\Mint\Directive\DOM\IfDirective;
+use Baueri\Mint\Directive\DOM\IncludeDirective;
 use Baueri\Mint\Directive\DOM\RepeatDirective;
 use Baueri\Mint\Directive\DOM\SectionDirective;
 use Baueri\Mint\Directive\DOM\WrapDirective;
@@ -42,6 +43,7 @@ class MintCompiler
             new RepeatDirective($this),
             new SectionDirective($this, $this->context),
             new YieldDirective(),
+            new IncludeDirective(),
             new WrapDirective($this, $this->context)
         ];
 

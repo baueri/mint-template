@@ -6,6 +6,7 @@ namespace Baueri\Mint\Tests\Unit\Directive;
 
 use Baueri\Mint\Directive\DOM\CustomComponentDirective;
 use Baueri\Mint\Directive\DOM\IfDirective;
+use Baueri\Mint\Directive\DOM\IncludeDirective;
 use Baueri\Mint\Directive\DOM\YieldDirective;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
@@ -160,6 +161,27 @@ final class DomDirectiveUnitTest extends TestCase
         $this->assertStringContainsString("'attributes' => \$__mint_attributes", $php);
         $this->assertStringContainsString('class', $php);
         $this->assertStringContainsString('wide', $php);
+    }
+
+    public function testMintIncludeDirectiveEmitsRenderWithMergedProps(): void
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        libxml_use_internal_errors(true);
+        $dom->loadHTML(
+            '<?xml encoding="UTF-8"><mint-include name="partials/card.php" :props="{$a, $a, $c}" :a="{ $override }" />',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        $node = $dom->documentElement;
+
+        $d = new IncludeDirective();
+        $this->assertTrue($d->supports($node));
+
+        $php = $d->compileOpen($node);
+        $this->assertStringContainsString("\$__mint_view->render('partials/card.php'", $php);
+        $this->assertStringContainsString("'a' =>", $php);
+        $this->assertStringContainsString('$override', $php);
+        $this->assertStringContainsString("'c' => \$c", $php);
     }
 }
 

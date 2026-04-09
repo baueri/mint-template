@@ -231,6 +231,29 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('inside', $out);
     }
 
+    public function testMintIncludeRendersPartialWithPropsAndExplicitOverride(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'partials/card.php', '<span>{{ $a }}-{{ $c }}</span>');
+        TempViews::put(
+            $viewsDir,
+            'include.php',
+            '<div><mint-include name="partials/card.php" :props="{$a, $a, $c}" :a="{ $override }" /></div>'
+        );
+
+        $compiler = new MintCompiler($viewsDir);
+
+        $out = $this->render($compiler, $viewsDir, $cacheDir, 'include.php', [
+            'a' => 1,
+            'c' => 3,
+            'override' => 9,
+        ]);
+
+        $this->assertStringContainsString('<span>9-3</span>', $out);
+    }
+
     public function testTextIfDirectiveSurvivesDomParsingAndControlsOutput(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
