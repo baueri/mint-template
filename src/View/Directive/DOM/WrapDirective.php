@@ -1,10 +1,10 @@
 <?php
 
-namespace Mint\View\Directive\DOM;
+namespace Baueri\Mint\Directive\DOM;
 
 use DOMElement;
-use Mint\View\MintCompiler;
-use Mint\View\RenderContext;
+use Baueri\Mint\MintCompiler;
+use Baueri\Mint\RenderContext;
 use RuntimeException;
 
 class WrapDirective implements DOMDirective
@@ -16,7 +16,7 @@ class WrapDirective implements DOMDirective
 
     public function supports(DOMElement $node): bool
     {
-        return $node->tagName === 'x-wrap';
+        return $node->tagName === 'mint-wrap';
     }
 
     public function compileOpen(DOMElement $node): string
@@ -24,29 +24,33 @@ class WrapDirective implements DOMDirective
         $view = $node->getAttribute('view');
 
         if (!$view) {
-            throw new RuntimeException('x-wrap requires a view attribute');
+            throw new RuntimeException('mint-wrap requires a view attribute');
         }
 
-        // 🔥 IMPORTANT: compile inner content, not saveHTML
-        $compiledBody = '';
-        foreach ($node->childNodes as $child) {
-            $compiledBody .= $this->compiler->compileNode($child);
-        }
+        $viewPhp = addslashes($view . '.php');
 
-        // Store compiled body
-        $this->context->sections['portal'] = $compiledBody;
-
-        // Compile wrapper view
-        return $this->compiler->compileView($view);
+        // Buffer everything inside <mint-wrap> so we can set it as a section at runtime,
+        // then render the layout template (parent) in the same render environment.
+        return <<<PHP
+<?php ob_start(); ?>
+PHP;
     }
 
     public function compileClose(DOMElement $node): string
     {
-        return '';
+        $view = $node->getAttribute('view');
+        $viewPhp = addslashes($view . '.php');
+
+        return <<<PHP
+<?php
+    \$__mint_env->sections['{$view}'] = ob_get_clean();
+    echo \$__mint_view->render('{$viewPhp}', array_merge(\$__mint_data ?? [], ['__mint_env' => \$__mint_env]));
+?>
+PHP;
     }
 
     public function isSelfClosing(): bool
     {
-        return true;
+        return false;
     }
 }

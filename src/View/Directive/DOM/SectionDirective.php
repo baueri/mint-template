@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Directive\DOM;
+namespace Baueri\Mint\Directive\DOM;
 
 use DOMElement;
-use Mint\View\MintCompiler;
-use Mint\View\RenderContext;
+use Baueri\Mint\MintCompiler;
+use Baueri\Mint\RenderContext;
 
 class SectionDirective implements DOMDirective
 {
@@ -17,31 +17,28 @@ class SectionDirective implements DOMDirective
 
     public function supports(DOMElement $node): bool
     {
-        return $node->tagName === 'x-section';
+        return $node->tagName === 'mint-section';
     }
 
     public function compileOpen(DOMElement $node): string
     {
-        $name = $node->getAttribute('name');
-        $compiled = '';
-
-        foreach ($node->childNodes as $child) {
-            $compiled .= $this->compiler->compileNode($child);
-        }
-
-        $this->context->sections[$name] =
-            ($this->context->sections[$name] ?? '') . $compiled;
-
-        return '';
+        return "<?php ob_start(); ?>";
     }
 
     public function compileClose(DOMElement $node): string
     {
-        return '';
+        $namePhp = addslashes($node->getAttribute('name'));
+
+        return <<<PHP
+<?php
+    \$__mint_section = ob_get_clean();
+    \$__mint_env->sections['{$namePhp}'] = (\$__mint_env->sections['{$namePhp}'] ?? '') . \$__mint_section;
+?>
+PHP;
     }
 
     public function isSelfClosing(): bool
     {
-        return true;
+        return false;
     }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Directive\Text;
+namespace Baueri\Mint\Directive\Text;
 
 interface TextDirectiveInterface
 {

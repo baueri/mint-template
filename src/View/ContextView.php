@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mint\View;
+namespace Baueri\Mint;
 
 class ContextView
 {

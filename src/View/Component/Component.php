@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Component;
+namespace Baueri\Mint\Component;
 
-use Mint\View\Context;
+use Baueri\Mint\Context;
 
 abstract class Component
 {

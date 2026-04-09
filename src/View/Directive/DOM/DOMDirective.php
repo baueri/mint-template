@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Directive\DOM;
+namespace Baueri\Mint\Directive\DOM;
 
 use DOMElement;
 
@@ -15,7 +15,7 @@ interface DOMDirective
     public function compileClose(DOMElement $node): string;
 
     /**
-     * Return true if this directive is self-closing (no child nodes should be compiled)
+     * Return true if child nodes should not be compiled separately (e.g. mint-yield).
      */
     public function isSelfClosing(): bool;
 }

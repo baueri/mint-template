@@ -2,26 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Mint\View;
+namespace Baueri\Mint;
 
 use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMText;
-use Mint\View\Directive\DOM\ComponentDirective;
-use Mint\View\Directive\DOM\DOMDirective;
-use Mint\View\Directive\DOM\ForeachDirective;
-use Mint\View\Directive\DOM\IfDirective;
-use Mint\View\Directive\DOM\SectionDirective;
-use Mint\View\Directive\DOM\WrapDirective;
-use Mint\View\Directive\DOM\YieldDirective;
-use Mint\View\Directive\Text\IfDirective as TextIfDirective;
-use Mint\View\Directive\Text\TextDirectiveInterface;
-use Mint\View\Directive\DOM\CustomComponentDirective;
-use Mint\View\Directive\Text\ForeachDirective as TextForeachDirective;
+use Baueri\Mint\Directive\DOM\DOMDirective;
+use Baueri\Mint\Directive\DOM\ForeachDirective;
+use Baueri\Mint\Directive\DOM\IfDirective;
+use Baueri\Mint\Directive\DOM\RepeatDirective;
+use Baueri\Mint\Directive\DOM\SectionDirective;
+use Baueri\Mint\Directive\DOM\WrapDirective;
+use Baueri\Mint\Directive\DOM\YieldDirective;
+use Baueri\Mint\Directive\Text\IfDirective as TextIfDirective;
+use Baueri\Mint\Directive\Text\TextDirectiveInterface;
+use Baueri\Mint\Directive\DOM\CustomComponentDirective;
+use Baueri\Mint\Directive\Text\ForeachDirective as TextForeachDirective;
 
 class MintCompiler
 {
+    private const PHP_PLACEHOLDER_PREFIX = '__MINT_PHP_BLOCK_';
+
     private RenderContext $context;
 
     /** @var DOMDirective[] */
@@ -37,9 +39,9 @@ class MintCompiler
         $this->domDirectives = [
             new IfDirective(),
             new ForeachDirective($this),
-            new ComponentDirective(),
+            new RepeatDirective($this),
             new SectionDirective($this, $this->context),
-            new YieldDirective($this->context),
+            new YieldDirective(),
             new WrapDirective($this, $this->context)
         ];
 
@@ -57,9 +59,12 @@ class MintCompiler
         $this->domDirectives[] = $directive;
     }
 
-    public function registerComponentDirective(string $name, string $class)
+    /**
+     * Register a component: the tag name is `mint-` plus $name (e.g. `alert` → `<mint-alert>`).
+     */
+    public function registerComponentDirective(string $name, string $class): void
     {
-        $this->registerDirective(new CustomComponentDirective($name, $class));
+        $this->registerDirective(new CustomComponentDirective($name, $class, $this));
     }
 
     /**
@@ -72,19 +77,114 @@ class MintCompiler
 
     public function compile(string $templatePath): string
     {
-        $template = file_get_contents($templatePath);
+        $template = @file_get_contents($templatePath);
+        if ($template === false) {
+            throw new \RuntimeException("Failed to read template: {$templatePath}");
+        }
 
-        // 1️⃣ Apply all text-based directives in order
         foreach ($this->textDirectives as $directive) {
             $template = $directive->compile($template);
         }
 
-        // 2️⃣ Parse DOM and compile DOM-based directives
+        [$template, $phpBlocks] = $this->protectPhpBlocks($template);
+
+        $template = $this->rewriteAttributesEchoInOpeningTags($template);
+
         $dom = new DOMDocument('1.0', 'UTF-8');
         libxml_use_internal_errors(true);
-        $dom->loadHTML($template, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        // libxml defaults HTML fragments to ISO-8859-1; declare UTF-8 so multibyte
+        // literals (e.g. em dash, arrows) in template files are not mis-parsed.
+        $htmlUtf8 = '<?xml encoding="UTF-8">' . $template;
+        $ok = $dom->loadHTML($htmlUtf8, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        if (! $ok) {
+            $errors = libxml_get_errors();
+            libxml_clear_errors();
 
-        return $this->walk($dom);
+            $msg = "Failed to parse template HTML: {$templatePath}";
+            if (!empty($errors)) {
+                $first = $errors[0];
+                $msg .= " (line {$first->line}, column {$first->column})";
+            }
+
+            throw new \RuntimeException($msg);
+        }
+
+        $compiled = $this->walk($dom);
+        return $this->restorePhpBlocks($compiled, $phpBlocks);
+    }
+
+    /**
+     * DOMDocument::loadHTML() does not reliably preserve PHP blocks.
+     * Protect them with placeholders before parsing and restore after compilation.
+     *
+     * @return array{0: string, 1: array<string,string>}
+     */
+    private function protectPhpBlocks(string $template): array
+    {
+        $phpBlocks = [];
+        $i = 0;
+
+        $template = preg_replace_callback(
+            '/<\?(?:php|=)[\s\S]*?\?>/i',
+            function (array $m) use (&$phpBlocks, &$i): string {
+                $key = self::PHP_PLACEHOLDER_PREFIX . $i++ . '__';
+                $phpBlocks[$key] = $m[0];
+                return $key;
+            },
+            $template
+        );
+
+        if ($template === null) {
+            throw new \RuntimeException('Failed to protect PHP blocks in template.');
+        }
+
+        return [$template, $phpBlocks];
+    }
+
+    /**
+     * HTML parsers drop `{{ $attributes }}` inside tag opens. Rewrite to `mint-attrs`, which
+     * compileElement() turns into `<?php echo $attributes; ?>` before the closing `>`.
+     */
+    private function rewriteAttributesEchoInOpeningTags(string $template): string
+    {
+        $pattern = '/<([a-zA-Z][\w:-]*)([^>]*)>/';
+        $result = preg_replace_callback(
+            $pattern,
+            static function (array $m): string {
+                $attrs = $m[2];
+                if (! preg_match('/\{\{\{\s*\$attributes\s*\}\}\}|\{\{\s*\$attributes\s*\}\}/', $attrs)) {
+                    return $m[0];
+                }
+
+                $attrs2 = preg_replace(
+                    '/\s*\{\{\{\s*\$attributes\s*\}\}\}\s*|\s*\{\{\s*\$attributes\s*\}\}\s*/',
+                    ' ',
+                    $attrs
+                );
+                // Avoid duplicate marker if the author also added `mint-attrs` by hand.
+                $attrs2 = preg_replace('/\s+mint-attrs\b\s*/', ' ', (string) $attrs2);
+                $attrs2 = trim((string) $attrs2);
+                $mid = $attrs2 === '' ? '' : (' ' . $attrs2);
+
+                return '<' . $m[1] . ' mint-attrs' . $mid . '>';
+            },
+            $template
+        );
+
+        if ($result === null) {
+            throw new \RuntimeException('Failed to rewrite $attributes merge in opening tags.');
+        }
+
+        return $result;
+    }
+
+    private function restorePhpBlocks(string $compiled, array $phpBlocks): string
+    {
+        if (empty($phpBlocks)) {
+            return $compiled;
+        }
+
+        return strtr($compiled, $phpBlocks);
     }
 
     private function walk(DOMNode $node): string
@@ -98,9 +198,26 @@ class MintCompiler
         if ($node instanceof DOMElement) {
             foreach ($this->domDirectives as $directive) {
                 if ($directive->supports($node)) {
+                    // x:if should wrap the whole element, not only its children.
+                    // Otherwise `<h1 x:if="...">OK</h1>` would compile to `if (...) OK endif`
+                    // instead of `if (...) <h1>OK</h1> endif`.
+                    if ($directive instanceof IfDirective) {
+                        // Re-compile the element via walk() after stripping x:if so nested
+                        // directives (e.g. <mint-alert x:if="...">) are not emitted as raw HTML.
+                        $inner = $node->cloneNode(true);
+                        $inner->removeAttribute('x:if');
+
+                        return $directive->compileOpen($node)
+                            . $this->walk($inner)
+                            . $directive->compileClose($node);
+                    }
+
                     $php = $directive->compileOpen($node);
 
-                    if (!$directive->isSelfClosing()) {
+                    $skipChildren = $directive->isSelfClosing()
+                        || ($directive instanceof CustomComponentDirective && ! $directive->hasSlotBody($node));
+
+                    if (! $skipChildren) {
                         foreach ($node->childNodes as $child) {
                             $php .= $this->walk($child);
                         }
@@ -125,9 +242,14 @@ class MintCompiler
     {
         $tag = $node->tagName;
         $attrs = '';
+        $forwardMintAttrs = $node->hasAttribute('mint-attrs');
 
         foreach ($node->attributes as $attr) {
             if ($removeDirective && str_starts_with($attr->name, 'x:')) {
+                continue;
+            }
+
+            if ($attr->name === 'mint-attrs') {
                 continue;
             }
 
@@ -136,7 +258,11 @@ class MintCompiler
             $attrs .= " {$attr->name}=\"{$value}\"";
         }
 
-        $html = "<{$tag}{$attrs}>";
+        $html = "<{$tag}{$attrs}";
+        if ($forwardMintAttrs) {
+            $html .= '<?php echo $attributes; ?>';
+        }
+        $html .= '>';
 
         foreach ($node->childNodes as $child) {
             $html .= $this->walk($child);
@@ -149,20 +275,52 @@ class MintCompiler
 
     private function compileAttribute(string $value): string
     {
-        return preg_replace_callback(
-            '/\{\{([^}]+)\}\}/',
+        $value = preg_replace_callback(
+            '/\{\{\{\s*([\s\S]*?)\s*\}\}\}/',
+            fn($m) => '<?php echo e(' . trim($m[1]) . '); ?>',
+            $value
+        );
+
+        if ($value === null) {
+            throw new \RuntimeException('Failed to compile escaped mustache in attribute.');
+        }
+
+        $value = preg_replace_callback(
+            '/\{\{\s*([\s\S]*?)\s*\}\}/',
             fn($m) => '<?php echo ' . trim($m[1]) . '; ?>',
             $value
         );
+
+        if ($value === null) {
+            throw new \RuntimeException('Failed to compile raw mustache in attribute.');
+        }
+
+        return $value;
     }
 
     private function compileEcho(string $text): string
     {
-        return preg_replace_callback(
-            '/\{\{([^}]+)\}\}/',
-            fn($m) => "<?php echo {$m[1]}; ?>",
+        $text = preg_replace_callback(
+            '/\{\{\{\s*([\s\S]*?)\s*\}\}\}/',
+            fn($m) => '<?php echo e(' . trim($m[1]) . '); ?>',
             $text
         );
+
+        if ($text === null) {
+            throw new \RuntimeException('Failed to compile escaped mustache in text.');
+        }
+
+        $text = preg_replace_callback(
+            '/\{\{\s*([\s\S]*?)\s*\}\}/',
+            fn($m) => '<?php echo ' . trim($m[1]) . '; ?>',
+            $text
+        );
+
+        if ($text === null) {
+            throw new \RuntimeException('Failed to compile raw mustache in text.');
+        }
+
+        return $text;
     }
 
     public function compileView(string $name): string
@@ -180,5 +338,93 @@ class MintCompiler
     public function getContext(): RenderContext
     {
         return $this->context;
+    }
+
+    /**
+     * Build PHP that sets $__mint_attributes from non-prop, non-directive HTML attributes
+     * (everything except names starting with ":" or "x:").
+     *
+     * @return string PHP lines (no <?php), assigns $__mint_attributes (string)
+     */
+    public function compileForwardedAttributesBlock(DOMElement $node): string
+    {
+        $parts = ['$__mint_attributes = \'\';'];
+
+        foreach ($node->attributes as $attr) {
+            $name = $attr->name;
+            if (str_starts_with($name, ':') || str_starts_with($name, 'x:')) {
+                continue;
+            }
+
+            $parts[] = $this->compileForwardedAttributeAppend($name, $attr->value);
+        }
+
+        return implode("\n            ", $parts);
+    }
+
+    private function compileForwardedAttributeAppend(string $name, string $value): string
+    {
+        if (! preg_match('/^[a-zA-Z_:][\w\-.:]*$/', $name)) {
+            throw new \RuntimeException("Invalid forwarded attribute name: {$name}");
+        }
+
+        if ($this->forwardedAttributeIsBoolean($name, $value)) {
+            return '$__mint_attributes .= \' \' . ' . var_export($name, true) . ';';
+        }
+
+        $lines = [];
+        $lines[] = '$__mint_attributes .= \' \' . ' . var_export($name, true) . ' . \'="\'' . ';';
+        foreach ($this->compileForwardedAttributeValueFragments($value) as $line) {
+            $lines[] = $line;
+        }
+        $lines[] = '$__mint_attributes .= \'"\';';
+
+        return implode("\n            ", $lines);
+    }
+
+    private function forwardedAttributeIsBoolean(string $name, string $value): bool
+    {
+        if ($value !== '') {
+            return false;
+        }
+
+        static $names = [
+            'async', 'autofocus', 'autoplay', 'checked', 'controls', 'default', 'defer',
+            'disabled', 'download', 'formnovalidate', 'hidden', 'ismap', 'itemscope', 'loop',
+            'multiple', 'muted', 'novalidate', 'open', 'playsinline', 'readonly', 'required',
+            'reversed', 'scoped', 'selected',
+        ];
+
+        return in_array(strtolower($name), $names, true);
+    }
+
+    /**
+     * @return list<string> PHP lines appending to $__mint_attributes
+     */
+    private function compileForwardedAttributeValueFragments(string $value): array
+    {
+        $lines = [];
+        $rest = $value;
+
+        while ($rest !== '') {
+            if (preg_match('/^\{\{\{\s*([\s\S]*?)\s*\}\}\}/', $rest, $m)) {
+                $expr = trim($m[1]);
+                $lines[] = '$__mint_attributes .= \\e(' . $expr . ');';
+                $rest = substr($rest, strlen($m[0]));
+            } elseif (preg_match('/^\{\{\s*([\s\S]*?)\s*\}\}/', $rest, $m)) {
+                $expr = trim($m[1]);
+                $lines[] = '$__mint_attributes .= (string) (' . $expr . ');';
+                $rest = substr($rest, strlen($m[0]));
+            } elseif (preg_match('/^[^{]+/', $rest, $m)) {
+                $lines[] = '$__mint_attributes .= ' . var_export($m[0], true) . ';';
+                $rest = substr($rest, strlen($m[0]));
+            } elseif (str_starts_with($rest, '{')) {
+                throw new \RuntimeException('Stray `{` in component HTML attribute value.');
+            } else {
+                break;
+            }
+        }
+
+        return $lines;
     }
 }

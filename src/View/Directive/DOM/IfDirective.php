@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Directive\DOM;
+namespace Baueri\Mint\Directive\DOM;
 
 use DOMElement;
 

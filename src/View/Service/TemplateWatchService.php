@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Service;
+namespace Baueri\Mint\Service;
 
-use Mint\View\Cache;
+use Baueri\Mint\Cache;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -44,7 +44,6 @@ class TemplateWatchService
             if (!isset($this->lastState[$file])) {
                 $this->onChanged($file, 'created');
             } elseif ($this->lastState[$file] !== $mtime) {
-                var_dump('ch: ', $file, '@@@@@@@@@@');
                 $this->onChanged($file, 'modified');
             }
 
@@ -60,16 +59,9 @@ class TemplateWatchService
 
     private function invalidateCacheFor(string $templateFile): void
     {
-        $this->cache->deleteByPrefix($templateFile);
-    }
-
-    private function cacheDir(): string
-    {
-        $ref = new \ReflectionClass($this->cache);
-        $prop = $ref->getProperty('path');
-        $prop->setAccessible(true);
-
-        return $prop->getValue($this->cache);
+        // Current cache keys are not derived from absolute file paths, so the
+        // simplest correct invalidation is clearing the compiled cache.
+        $this->cache->clear();
     }
 
     private function allTemplates(): iterable

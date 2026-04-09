@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Directive\Text;
+namespace Baueri\Mint\Directive\Text;
 
-use Mint\View\Directive\Text\TextDirectiveInterface;
+use Baueri\Mint\Directive\Text\TextDirectiveInterface;
 
 class ForeachDirective implements TextDirectiveInterface
 {

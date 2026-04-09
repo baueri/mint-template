@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Directive\DOM;
+namespace Baueri\Mint\Directive\DOM;
 
 use DOMElement;
-use Mint\View\MintCompiler;
+use Baueri\Mint\MintCompiler;
 
 class ForeachDirective implements DOMDirective
 {

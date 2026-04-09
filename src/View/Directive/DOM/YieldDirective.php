@@ -2,28 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Mint\View\Directive\DOM;
+namespace Baueri\Mint\Directive\DOM;
 
 use DOMElement;
-use Mint\View\RenderContext;
 
 class YieldDirective implements DOMDirective
 {
-    public function __construct(
-        private readonly RenderContext $context
-    ) {
-    }
-
     public function supports(DOMElement $node): bool
     {
-        return $node->tagName === 'x-yield';
+        return $node->tagName === 'mint-yield';
     }
 
     public function compileOpen(DOMElement $node): string
     {
         $name = $node->getAttribute('name');
 
-        return $this->context->sections[$name] ?? '';
+        $namePhp = addslashes($name);
+
+        return "<?php echo \$__mint_env->sections['{$namePhp}'] ?? ''; ?>";
     }
 
     public function compileClose(DOMElement $node): string

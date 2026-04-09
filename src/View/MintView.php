@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mint\View;
+namespace Baueri\Mint;
 
 class MintView implements View
 {
@@ -25,6 +25,12 @@ class MintView implements View
         if (!array_key_exists('slot', $data) && isset($__mint_slot)) {
             $data['slot'] = $__mint_slot;
         }
+
+        // Expose render-time data/env to compiled templates.
+        // - $__mint_data: the original data array (useful for forwarding)
+        // - $__mint_env: shared section environment for layout/yield
+        $__mint_data = $data;
+        $__mint_env = $data['__mint_env'] ?? new RenderContext();
 
         extract($data, EXTR_SKIP);
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mint\View;
+namespace Baueri\Mint;
 
 class Cache
 {
@@ -26,14 +26,34 @@ class Cache
     public function write(string $template, string $php): string
     {
         if (! is_dir($this->path)) {
-            mkdir($this->path, 0777, true);
+            $ok = mkdir($this->path, 0775, true);
+            if (! $ok && ! is_dir($this->path)) {
+                throw new \RuntimeException("Failed to create cache directory: {$this->path}");
+            }
         }
 
         $prefix = "<?php // rendered template of: {$this->path}/{$template} ?>" . PHP_EOL;
 
         $file = $this->compiledPath($template);
-        file_put_contents($file, $prefix . $php);
+        $bytes = file_put_contents($file, $prefix . $php);
+        if ($bytes === false) {
+            throw new \RuntimeException("Failed to write compiled template: {$file}");
+        }
 
         return $file;
+    }
+
+    public function clear(): void
+    {
+        if (!is_dir($this->path)) {
+            return;
+        }
+
+        $iterator = new \DirectoryIterator($this->path);
+        foreach ($iterator as $file) {
+            if ($file->isFile() && str_ends_with($file->getFilename(), '.php')) {
+                @unlink($file->getPathname());
+            }
+        }
     }
 }
