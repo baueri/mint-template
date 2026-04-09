@@ -4,7 +4,15 @@
   </head>
   <body>
     <header>
-      <h1>{{ $title }}</h1>
+      <nav>
+        <a href="#" aria-current="page">Home</a>
+        <span>·</span>
+        <a href="#">Docs</a>
+      </nav>
+
+      <div class="layout-heading">
+        <mint-yield name="heading" />
+      </div>
     </header>
 
     <main>

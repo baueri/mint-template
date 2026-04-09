@@ -20,5 +20,13 @@ $view = new MintView(
 echo $view->render('index.php', [
     'name' => '<Alice & Co>',
     'rawHtml' => '<strong>raw</strong>',
+    'count' => 3,
+    'isLoggedIn' => true,
+    'userName' => 'Ivan',
+    'products' => [
+        ['name' => 'Notebook', 'price' => 12],
+        ['name' => 'Pencil', 'price' => 2],
+        ['name' => 'Backpack', 'price' => 39],
+    ],
 ]);
 

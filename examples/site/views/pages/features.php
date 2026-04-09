@@ -22,8 +22,16 @@
                 <p><code>x:if</code> and <code>x:foreach</code> compile to plain PHP control structures around real markup.</p>
             </li>
             <li>
+                <h2 class="feature-list__title">Repeat</h2>
+                <p><code>x:repeat</code> lets you repeat a node a fixed number of times with a 0-based index.</p>
+            </li>
+            <li>
                 <h2 class="feature-list__title">Custom components</h2>
                 <p>Register <code>mint-*</code> tags that map to PHP classes; pass props with <code>:</code> attributes and optional slots.</p>
+            </li>
+            <li>
+                <h2 class="feature-list__title">Template includes</h2>
+                <p><code>mint-include</code> renders another template and can receive props via <code>:props</code> / <code>:key</code>.</p>
             </li>
         </ul>
 

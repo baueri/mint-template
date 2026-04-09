@@ -3,7 +3,7 @@
 
   <mint-user-card :user="{ $user }" />
 
-  <mint-alert :type="error">
+  <mint-alert :type="error" style="border:1px solid red;">
     Something went wrong for {{ $user['name'] }}.
   </mint-alert>
 </div>
