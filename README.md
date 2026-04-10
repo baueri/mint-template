@@ -215,6 +215,10 @@ Relative paths may not use `..` segments; resolved files must stay under the bas
 
 Under the hood, compiled templates are written to nested subdirectories of the cache path (by hash of the logical template name) so large projects do not put thousands of files in one folder. Callers still use the same logical names and `Cache` API as before.
 
+Each compiled file starts with a short comment naming the **logical template** (as passed to `render()`) and the **absolute source path**, which makes debugging easier.
+
+`Cache::forget($logicalTemplate)` removes one compiled artifact (for example after a deploy hook).
+
 ### `:props` shorthand
 
 List simple PHP variables inside braces; each `$name` becomes context key `name` with that variable as the value (like object shorthand in JS):

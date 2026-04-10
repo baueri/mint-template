@@ -25,7 +25,10 @@ class Cache
             && filemtime($compiled) >= filemtime($source);
     }
 
-    public function write(string $template, string $php): string
+    /**
+     * @param string|null $sourcePath Absolute path to the source template (for the generated file header only).
+     */
+    public function write(string $template, string $php, ?string $sourcePath = null): string
     {
         $file = $this->compiledPath($template);
         $dir = dirname($file);
@@ -36,7 +39,11 @@ class Cache
             }
         }
 
-        $prefix = "<?php // rendered template of: {$this->path}/{$template} ?>" . PHP_EOL;
+        $header = 'Mint compiled. logical template: ' . $template;
+        if ($sourcePath !== null && $sourcePath !== '') {
+            $header .= ' | source: ' . $sourcePath;
+        }
+        $prefix = "<?php // {$header} ?>" . PHP_EOL;
 
         $bytes = file_put_contents($file, $prefix . $php);
         if ($bytes === false) {
@@ -44,6 +51,25 @@ class Cache
         }
 
         return $file;
+    }
+
+    /**
+     * Remove the compiled artifact for a logical template name (e.g. `page.php` or `pkg::partials/x.php`).
+     */
+    public function forget(string $template): void
+    {
+        $compiled = $this->compiledPath($template);
+        if (is_file($compiled)) {
+            @unlink($compiled);
+        }
+        $dir = dirname($compiled);
+        if (is_dir($dir)) {
+            @rmdir($dir);
+        }
+        $grand = dirname($dir);
+        if (is_dir($grand)) {
+            @rmdir($grand);
+        }
     }
 
     public function clear(): void

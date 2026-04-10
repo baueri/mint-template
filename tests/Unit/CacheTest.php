@@ -14,11 +14,16 @@ final class CacheTest extends TestCase
         $dir = sys_get_temp_dir() . '/mint_cache_' . bin2hex(random_bytes(8));
         $cache = new Cache($dir);
 
-        $file = $cache->write('index.php', '<?php echo 1; ?>');
+        $source = '/var/www/views/index.php';
+        $file = $cache->write('index.php', '<?php echo 1; ?>', $source);
 
         $this->assertFileExists($file);
         $this->assertStringEndsWith('.php', $file);
         $this->assertMatchesRegularExpression('#/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{40}\.php$#', $file);
+
+        $head = (string) file_get_contents($file, false, null, 0, 256);
+        $this->assertStringContainsString('logical template: index.php', $head);
+        $this->assertStringContainsString('source: ' . $source, $head);
     }
 
     public function testClearRemovesCompiledFiles(): void
@@ -33,6 +38,22 @@ final class CacheTest extends TestCase
 
         $this->assertFileDoesNotExist($file);
         $this->assertDirectoryDoesNotExist(dirname($file));
+    }
+
+    public function testForgetRemovesSingleCompiledTemplate(): void
+    {
+        $dir = sys_get_temp_dir() . '/mint_cache_' . bin2hex(random_bytes(8));
+        $cache = new Cache($dir);
+
+        $a = $cache->write('a.php', '<?php echo "a"; ?>');
+        $b = $cache->write('b.php', '<?php echo "b"; ?>');
+        $this->assertFileExists($a);
+        $this->assertFileExists($b);
+
+        $cache->forget('a.php');
+
+        $this->assertFileDoesNotExist($a);
+        $this->assertFileExists($b);
     }
 }
 

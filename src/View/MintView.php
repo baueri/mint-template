@@ -78,7 +78,7 @@ class MintView implements View
 
         if (! $this->cache->isFresh($template, $source)) {
             $php = $this->compiler->compile($source);
-            $this->cache->write($template, $php);
+            $this->cache->write($template, $php, $source);
         }
 
         $data = array_merge($this->shared, $data);
