@@ -17,6 +17,12 @@ $view = new MintView(
     compiler: new MintCompiler($views),
 );
 
+// Available in every template (layouts, includes, nested renders). Per-render data overrides.
+$view->share('appName', 'Mint basic demo');
+$view->share([
+    'supportEmail' => 'support@example.test',
+]);
+
 echo $view->render('index.php', [
     'name' => '<Alice & Co>',
     'rawHtml' => '<strong>raw</strong>',

@@ -121,7 +121,7 @@ final class DomDirectiveUnitTest extends TestCase
         $php = $d->compileOpen($node);
         $this->assertStringContainsString('$__mint_props->view()->render(', $php);
         $this->assertStringContainsString('\'components/link.php\'', $php);
-        $this->assertStringContainsString('$__mint_props->all()', $php);
+        $this->assertStringContainsString('\array_merge($__mint_view->shared(), $__mint_props->all())', $php);
         $this->assertStringNotContainsString('$component = new \\', $php);
     }
 

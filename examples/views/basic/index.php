@@ -34,5 +34,8 @@
     <?php $title = 'Starter plan'; $price = 9; $badge = 'Most popular'; ?>
     <mint-include name="partials/price-card.php" :props="{$title, $price, $badge}" />
   </div>
+
+  <h2>Shared variables</h2>
+  <p>From <code>share()</code>: <strong>{{ $appName }}</strong> — contact <code>{{ $supportEmail }}</code>.</p>
 </div>
 </mint-wrap>

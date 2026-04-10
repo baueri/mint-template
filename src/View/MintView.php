@@ -9,6 +9,9 @@ class MintView implements View
     /** @var array<string, string> namespace => absolute directory */
     private array $namespaces = [];
 
+    /** @var array<string, mixed> merged into every {@see render()} (per-render keys override) */
+    private array $shared = [];
+
     public function __construct(
         private readonly string $viewsPath,
         private readonly Cache $cache,
@@ -39,6 +42,36 @@ class MintView implements View
         $this->namespaces[$namespace] = $real;
     }
 
+    /**
+     * Register variables merged into every template render. Call-time {@see render()} data wins on key conflicts.
+     *
+     * @param array<string, mixed>|string $key
+     */
+    public function share(array|string $key, mixed $value = null): void
+    {
+        if (is_array($key)) {
+            foreach ($key as $name => $v) {
+                if (! is_string($name)) {
+                    throw new \InvalidArgumentException('Shared variable names must be strings.');
+                }
+                $this->share($name, $v);
+            }
+
+            return;
+        }
+
+        $this->assertValidShareKey($key);
+        $this->shared[$key] = $value;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function shared(): array
+    {
+        return $this->shared;
+    }
+
     public function render(string $template, array $data = []): string
     {
         $source = $this->resolveTemplateSourcePath($template);
@@ -47,6 +80,8 @@ class MintView implements View
             $php = $this->compiler->compile($source);
             $this->cache->write($template, $php);
         }
+
+        $data = array_merge($this->shared, $data);
 
         if (! array_key_exists('slot', $data) && isset($__mint_slot)) {
             $data['slot'] = $__mint_slot;
@@ -133,5 +168,18 @@ class MintView implements View
     private function normalizePath(string $path): string
     {
         return rtrim(str_replace('\\', '/', $path), '/');
+    }
+
+    private function assertValidShareKey(string $key): void
+    {
+        if (str_starts_with($key, '__mint_')) {
+            throw new \InvalidArgumentException('Keys prefixed with __mint_ are reserved for the engine.');
+        }
+
+        if (! preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $key)) {
+            throw new \InvalidArgumentException(
+                'Shared variable name must be a valid PHP variable name.'
+            );
+        }
     }
 }

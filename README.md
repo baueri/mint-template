@@ -5,6 +5,7 @@ A tiny PHP template compiler that supports:
 - `{{ ... }}` echo expressions
 - `@if / @elseif / @else / @endif`
 - DOM directives like `x:if`, `x:foreach`, and `mint-` prefixed component tags
+- `MintView::share()` for data merged into every template render
 
 ## Install
 
@@ -25,8 +26,36 @@ $cache = new Cache(__DIR__ . "/var/cache");
 $compiler = new MintCompiler(__DIR__ . "/views");
 $view = new MintView(__DIR__ . "/views", $cache, $compiler);
 
+// Optional: variables merged into every render (per-render data overrides the same keys).
+$view->share("appName", "My App");
+$view->share([
+    "supportEmail" => "hello@example.com",
+]);
+
 echo $view->render("index.php", ["name" => "Alice"]);
 ```
+
+## Shared variables
+
+Call `MintView::share()` to register data that is merged into **every** `render()` call. Typical uses are app name, current user, CSRF token, or config snippets you do not want to pass manually each time.
+
+- **Override order:** `array_merge($shared, $renderData)` — keys in the second argument to `render()` win.
+- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-wrap`, nested layouts, and template-backed `<mint-…>` view components all see the same variables (component props still override shared keys for that template).
+- **Reserved names:** Keys must be valid PHP variable names. Names starting with `__mint_` are rejected; they are reserved for the engine.
+
+```php
+$view->share("locale", "en_GB");
+
+$view->share([
+    "assetVersion" => "v12",
+    "features" => ["beta" => true],
+]);
+
+// This render sees locale, assetVersion, features, and name; name is only for this call.
+echo $view->render("page.php", ["name" => "Home"]);
+```
+
+`shared()` returns the current map (useful for tests or debugging).
 
 ## Template syntax
 

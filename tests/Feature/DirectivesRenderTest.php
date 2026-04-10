@@ -344,6 +344,34 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('inner', $out);
     }
 
+    public function testViewComponentTemplateSeesSharedVariables(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put(
+            $viewsDir,
+            'components/site-chip.php',
+            '<span>{{ $brand }}</span>'
+        );
+        TempViews::put(
+            $viewsDir,
+            'vc-shared-page.php',
+            '<mint-site-chip />'
+        );
+
+        $compiler = new MintCompiler($viewsDir);
+        $compiler->registerViewComponent('site-chip', 'components/site-chip.php');
+
+        $cache = new Cache($cacheDir);
+        $view = new MintView($viewsDir, $cache, $compiler);
+        $view->share('brand', 'Acme');
+
+        $out = $view->render('vc-shared-page.php');
+
+        $this->assertStringContainsString('Acme', $out);
+    }
+
     public function testRenderNamespacedIncludeViaMintView(): void
     {
         $appDir = TempViews::makeDir('mint_app');

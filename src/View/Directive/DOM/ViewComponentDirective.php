@@ -27,6 +27,6 @@ final class ViewComponentDirective extends AbstractMintCustomTagDirective
     {
         $tpl = addslashes($this->template);
 
-        return 'echo $__mint_props->view()->render(\'' . $tpl . '\', $__mint_props->all());';
+        return 'echo $__mint_props->view()->render(\'' . $tpl . '\', \array_merge($__mint_view->shared(), $__mint_props->all()));';
     }
 }

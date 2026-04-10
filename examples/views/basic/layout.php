@@ -1,7 +1,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Basic example</title>
+    <title>{{ $appName }} — Basic example</title>
   </head>
   <body class="{{{ $bodyClass ?? '' }}}">
     <main>
