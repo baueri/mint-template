@@ -51,9 +51,9 @@ $views = dirname(__DIR__) . '/views';
 $cachePath = dirname(__DIR__) . '/var/cache';
 
 $compiler = new MintCompiler($views);
-$compiler->registerComponentDirective('alert', Alert::class);
-$compiler->registerComponentDirective('stat-tile', StatTile::class);
-$compiler->registerComponentDirective('feature-callout', FeatureCallout::class);
+$compiler->registerComponent('alert', Alert::class);
+$compiler->registerComponent('stat-tile', StatTile::class);
+$compiler->registerComponent('feature-callout', FeatureCallout::class);
 
 $view = new MintView($views, new Cache($cachePath), $compiler);
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Baueri\Mint\Tests\Unit\Directive;
 
 use Baueri\Mint\Directive\DOM\CustomComponentDirective;
+use Baueri\Mint\Directive\DOM\ViewComponentDirective;
 use Baueri\Mint\Directive\DOM\IfDirective;
 use Baueri\Mint\Directive\DOM\IncludeDirective;
 use Baueri\Mint\Directive\DOM\WrapDirective;
@@ -53,7 +54,7 @@ final class DomDirectiveUnitTest extends TestCase
         file_put_contents($file, '<mint-alert x:if="{ $ok }" :type="success" />');
 
         $compiler = new \Baueri\Mint\MintCompiler($tmp);
-        $compiler->registerComponentDirective('alert', 'Some\\Alert');
+        $compiler->registerComponent('alert', 'Some\\Alert');
         $php = $compiler->compile($file);
 
         $this->assertStringContainsString('<?php if ( $ok ): ?>', $php);
@@ -105,6 +106,39 @@ final class DomDirectiveUnitTest extends TestCase
         $this->assertFalse($d->isSelfClosing());
         $this->assertTrue($d->hasSlotBody($node));
         $this->assertStringContainsString('ob_start', $d->compileOpen($node));
+    }
+
+    public function testViewComponentDirectiveEmitsViewRender(): void
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<mint-link></mint-link>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        $node = $dom->documentElement;
+
+        $compiler = new \Baueri\Mint\MintCompiler(sys_get_temp_dir());
+        $d = new ViewComponentDirective('link', 'components/link.php', $compiler);
+        $php = $d->compileOpen($node);
+        $this->assertStringContainsString('$__mint_props->view()->render(', $php);
+        $this->assertStringContainsString('\'components/link.php\'', $php);
+        $this->assertStringContainsString('$__mint_props->all()', $php);
+        $this->assertStringNotContainsString('$component = new \\', $php);
+    }
+
+    public function testViewComponentDirectiveWithSlotUsesBufferedClose(): void
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<mint-link>X</mint-link>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        $node = $dom->documentElement;
+
+        $compiler = new \Baueri\Mint\MintCompiler(sys_get_temp_dir());
+        $d = new ViewComponentDirective('link', 'components/link.php', $compiler);
+        $this->assertStringContainsString('ob_start', $d->compileOpen($node));
+        $close = $d->compileClose($node);
+        $this->assertStringContainsString('ob_get_clean', $close);
+        $this->assertStringContainsString('$__mint_props->view()->render(', $close);
     }
 
     public function testCustomComponentPropsShorthandExpandsToContextEntries(): void

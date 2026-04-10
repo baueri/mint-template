@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Baueri\Mint\Directive\DOM;
+
+use Baueri\Mint\MintCompiler;
+
+/**
+ * Renders a registered view-only &lt;mint-{name}&gt; via Context::view()->render().
+ */
+final class ViewComponentDirective extends AbstractMintCustomTagDirective
+{
+    public function __construct(
+        string $name,
+        private readonly string $template,
+        MintCompiler $compiler,
+    ) {
+        if ($template === '') {
+            throw new \InvalidArgumentException('parameter `$template` must not be empty');
+        }
+
+        parent::__construct($name, $compiler);
+    }
+
+    protected function renderAfterContextPhp(): string
+    {
+        $tpl = addslashes($this->template);
+
+        return 'echo $__mint_props->view()->render(\'' . $tpl . '\', $__mint_props->all());';
+    }
+}

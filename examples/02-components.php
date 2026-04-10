@@ -34,8 +34,8 @@ final class Alert extends Component
 }
 
 $compiler = new MintCompiler($views);
-$compiler->registerComponentDirective('user-card', UserCard::class);
-$compiler->registerComponentDirective('alert', Alert::class);
+$compiler->registerComponent('user-card', UserCard::class);
+$compiler->registerComponent('alert', Alert::class);
 
 $view = new MintView($views, new Cache($cache), $compiler);
 

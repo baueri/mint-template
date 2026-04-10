@@ -137,8 +137,54 @@ final class UserCard extends Component
 Register:
 
 ```php
-$compiler->registerComponentDirective('user-card', UserCard::class);
+$compiler->registerComponent('user-card', UserCard::class);
 ```
+
+### View-only components
+
+When a tag only needs a template (no extra PHP class), register the view path directly. The **first argument** is the tag suffix (plain name, hyphens allowed; no `::`). The **second argument** is a logical template path and follows `MintView::render()` (optional `namespace::path.php` — see [View namespaces](#view-namespaces-for-template-paths)):
+
+```php
+$compiler->registerViewComponent('badge', 'components/badge.php');
+$compiler->registerViewComponent('acme-pill', 'acme::widgets/pill.php');
+```
+
+```html
+<mint-badge :label="{ $title }">optional slot</mint-badge>
+```
+
+Props, `:props`, slots, and forwarded HTML attributes behave like class-based components.
+
+### Component names and collisions
+
+Registering the same component suffix twice (`registerComponent`, `registerViewComponent`, or `registerDirective` with a mint custom-tag directive) throws `InvalidArgumentException`.
+
+These suffixes are reserved for built-in tags: `include`, `wrap`, `section`, `yield`, `attrs`. Third-party packages should use a **vendor prefix** in the suffix (for example `billing-invoice-row` → `<mint-billing-invoice-row>`) to avoid clashes with the app or other packages. Tag suffixes are **not** namespaced with `::`; only template path strings use that form.
+
+### View namespaces (for template paths only)
+
+Register extra view directories on `MintView` (instance-based; pass `MintView` into your package services from the app container). This affects **template resolution only** (`render`, `mint-include`, `mint-wrap`, `Component::view()`, `registerViewComponent`’s template argument). It does **not** change how you choose `registerComponent` / `registerViewComponent` tag names.
+
+```php
+$view->registerNamespace('acme', __DIR__ . '/vendor/acme/widget/views');
+```
+
+Reference templates with a single `::` separator:
+
+```php
+$view->render('acme::partials/pill.php', $data);
+```
+
+```html
+<mint-include name="acme::partials/pill.php" />
+<mint-wrap view="acme::layout"></mint-wrap>
+```
+
+Relative paths may not use `..` segments; resolved files must stay under the base views path or the registered namespace directory.
+
+### Compiled cache layout
+
+Under the hood, compiled templates are written to nested subdirectories of the cache path (by hash of the logical template name) so large projects do not put thousands of files in one folder. Callers still use the same logical names and `Cache` API as before.
 
 ### `:props` shorthand
 
@@ -207,7 +253,7 @@ final class Alert extends Component
 Register:
 
 ```php
-$compiler->registerComponentDirective('alert', Alert::class);
+$compiler->registerComponent('alert', Alert::class);
 ```
 
 ## Development

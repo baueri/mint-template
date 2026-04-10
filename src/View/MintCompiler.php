@@ -18,12 +18,17 @@ use Baueri\Mint\Directive\DOM\WrapDirective;
 use Baueri\Mint\Directive\DOM\YieldDirective;
 use Baueri\Mint\Directive\Text\IfDirective as TextIfDirective;
 use Baueri\Mint\Directive\Text\TextDirectiveInterface;
+use Baueri\Mint\Directive\DOM\AbstractMintCustomTagDirective;
 use Baueri\Mint\Directive\DOM\CustomComponentDirective;
+use Baueri\Mint\Directive\DOM\ViewComponentDirective;
 use Baueri\Mint\Directive\Text\ForeachDirective as TextForeachDirective;
 
 class MintCompiler
 {
     private const PHP_PLACEHOLDER_PREFIX = '__MINT_PHP_BLOCK_';
+
+    /** Suffixes that produce tags reserved by built-in DOM directives or the compiler. */
+    private const RESERVED_MINT_COMPONENT_SUFFIXES = ['include', 'wrap', 'section', 'yield', 'attrs'];
 
     private RenderContext $context;
 
@@ -32,6 +37,9 @@ class MintCompiler
 
     /** @var TextDirectiveInterface[] */
     private array $textDirectives;
+
+    /** @var array<string, true> */
+    private array $registeredMintComponentSuffixes = [];
 
     public function __construct(private readonly string $viewPath)
     {
@@ -58,15 +66,52 @@ class MintCompiler
      */
     public function registerDirective(DOMDirective $directive): void
     {
+        if ($directive instanceof AbstractMintCustomTagDirective) {
+            $this->reserveMintComponentSuffix($directive->mintTagSuffix());
+        }
+
         $this->domDirectives[] = $directive;
     }
 
     /**
      * Register a component: the tag name is `mint-` plus $name (e.g. `alert` → `<mint-alert>`).
+     * $name must not contain `::` (that syntax is reserved for template paths on {@see MintView}).
      */
-    public function registerComponentDirective(string $name, string $class): void
+    public function registerComponent(string $name, string $class): void
     {
         $this->registerDirective(new CustomComponentDirective($name, $class, $this));
+    }
+
+    /**
+     * Register a view-only component: tag is `mint-` + $name (no `::` in $name). $template is a logical path
+     * resolved like {@see MintView::render()} (optional `namespace::path.php`).
+     */
+    public function registerViewComponent(string $name, string $template): void
+    {
+        $this->registerDirective(new ViewComponentDirective($name, $template, $this));
+    }
+
+    private function reserveMintComponentSuffix(string $name): void
+    {
+        if (str_contains($name, '::')) {
+            throw new \InvalidArgumentException(
+                'Mint component names cannot contain "::". That syntax is only for template paths on MintView (e.g. registerViewComponent second argument); use a hyphenated tag suffix such as acme-badge.'
+            );
+        }
+
+        if (in_array($name, self::RESERVED_MINT_COMPONENT_SUFFIXES, true)) {
+            throw new \InvalidArgumentException(
+                "Mint component name \"{$name}\" is reserved (built-in <mint-{$name}>). Use a vendor-prefixed name."
+            );
+        }
+
+        if (isset($this->registeredMintComponentSuffixes[$name])) {
+            throw new \InvalidArgumentException(
+                "Mint component \"{$name}\" is already registered. Use a different name or a vendor prefix."
+            );
+        }
+
+        $this->registeredMintComponentSuffixes[$name] = true;
     }
 
     /**
@@ -217,7 +262,7 @@ class MintCompiler
                     $php = $directive->compileOpen($node);
 
                     $skipChildren = $directive->isSelfClosing()
-                        || ($directive instanceof CustomComponentDirective && ! $directive->hasSlotBody($node));
+                        || ($directive instanceof AbstractMintCustomTagDirective && ! $directive->hasSlotBody($node));
 
                     if (! $skipChildren) {
                         foreach ($node->childNodes as $child) {

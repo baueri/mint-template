@@ -6,29 +6,52 @@ namespace Baueri\Mint;
 
 class MintView implements View
 {
+    /** @var array<string, string> namespace => absolute directory */
+    private array $namespaces = [];
+
     public function __construct(
         private readonly string $viewsPath,
-        private readonly Cache  $cache,
+        private readonly Cache $cache,
         private readonly MintCompiler $compiler
     ) {
     }
 
+    /**
+     * Register an additional view root, addressable as `{namespace}::relative/path.php`.
+     */
+    public function registerNamespace(string $namespace, string $path): void
+    {
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $namespace)) {
+            throw new \InvalidArgumentException(
+                'Namespace must match [a-zA-Z_][a-zA-Z0-9_]*.'
+            );
+        }
+
+        if (isset($this->namespaces[$namespace])) {
+            throw new \InvalidArgumentException("View namespace \"{$namespace}\" is already registered.");
+        }
+
+        $real = realpath($path);
+        if ($real === false || ! is_dir($real)) {
+            throw new \InvalidArgumentException("View namespace path is not a directory: {$path}");
+        }
+
+        $this->namespaces[$namespace] = $real;
+    }
+
     public function render(string $template, array $data = []): string
     {
-        $source = $this->viewsPath . '/' . $template;
+        $source = $this->resolveTemplateSourcePath($template);
 
         if (! $this->cache->isFresh($template, $source)) {
             $php = $this->compiler->compile($source);
             $this->cache->write($template, $php);
         }
 
-        if (!array_key_exists('slot', $data) && isset($__mint_slot)) {
+        if (! array_key_exists('slot', $data) && isset($__mint_slot)) {
             $data['slot'] = $__mint_slot;
         }
 
-        // Expose render-time data/env to compiled templates.
-        // - $__mint_data: the original data array (useful for forwarding)
-        // - $__mint_env: shared section environment for layout/yield
         $__mint_data = $data;
         $__mint_env = $data['__mint_env'] ?? new RenderContext();
 
@@ -38,6 +61,77 @@ class MintView implements View
 
         ob_start();
         include $this->cache->compiledPath($template);
+
         return ob_get_clean();
+    }
+
+    private function resolveTemplateSourcePath(string $template): string
+    {
+        $pos = strpos($template, '::');
+        if ($pos === false) {
+            return $this->joinUnderRoot($this->viewsPath, $template);
+        }
+
+        if (strpos($template, '::', $pos + 2) !== false) {
+            throw new \RuntimeException('Template name may only contain one "::" separator.');
+        }
+
+        $namespace = substr($template, 0, $pos);
+        $relative = substr($template, $pos + 2);
+
+        if ($namespace === '' || $relative === '') {
+            throw new \RuntimeException('Invalid namespaced template name.');
+        }
+
+        if (! isset($this->namespaces[$namespace])) {
+            throw new \RuntimeException("Unknown view namespace \"{$namespace}\".");
+        }
+
+        return $this->joinUnderRoot($this->namespaces[$namespace], $relative);
+    }
+
+    private function joinUnderRoot(string $root, string $relative): string
+    {
+        $relative = str_replace('\\', '/', $relative);
+        if ($relative === '' || str_ends_with($relative, '/')) {
+            throw new \RuntimeException('Invalid template path.');
+        }
+
+        foreach (explode('/', $relative) as $segment) {
+            if ($segment === '..' || $segment === '') {
+                throw new \RuntimeException('Invalid template path segment.');
+            }
+        }
+
+        $rootReal = realpath($root);
+        if ($rootReal === false) {
+            throw new \RuntimeException("Views path does not exist: {$root}");
+        }
+
+        $candidate = $rootReal . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
+        $resolved = realpath($candidate);
+
+        if ($resolved === false || ! is_file($resolved)) {
+            throw new \RuntimeException("Template not found: {$relative}");
+        }
+
+        $this->assertPathInsideRoot($rootReal, $resolved);
+
+        return $resolved;
+    }
+
+    private function assertPathInsideRoot(string $rootReal, string $fileReal): void
+    {
+        $rootNorm = $this->normalizePath($rootReal);
+        $fileNorm = $this->normalizePath($fileReal);
+
+        if ($fileNorm !== $rootNorm && ! str_starts_with($fileNorm, $rootNorm . '/')) {
+            throw new \RuntimeException('Template path escapes allowed view root.');
+        }
+    }
+
+    private function normalizePath(string $path): string
+    {
+        return rtrim(str_replace('\\', '/', $path), '/');
     }
 }

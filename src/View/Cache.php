@@ -12,7 +12,9 @@ class Cache
 
     public function compiledPath(string $template): string
     {
-        return $this->path . '/' . sha1($template) . '.php';
+        $hash = sha1($template);
+
+        return $this->path . '/' . substr($hash, 0, 2) . '/' . substr($hash, 2, 2) . '/' . $hash . '.php';
     }
 
     public function isFresh(string $template, string $source): bool
@@ -25,16 +27,17 @@ class Cache
 
     public function write(string $template, string $php): string
     {
-        if (! is_dir($this->path)) {
-            $ok = mkdir($this->path, 0775, true);
-            if (! $ok && ! is_dir($this->path)) {
-                throw new \RuntimeException("Failed to create cache directory: {$this->path}");
+        $file = $this->compiledPath($template);
+        $dir = dirname($file);
+        if (! is_dir($dir)) {
+            $ok = mkdir($dir, 0775, true);
+            if (! $ok && ! is_dir($dir)) {
+                throw new \RuntimeException("Failed to create cache directory: {$dir}");
             }
         }
 
         $prefix = "<?php // rendered template of: {$this->path}/{$template} ?>" . PHP_EOL;
 
-        $file = $this->compiledPath($template);
         $bytes = file_put_contents($file, $prefix . $php);
         if ($bytes === false) {
             throw new \RuntimeException("Failed to write compiled template: {$file}");
@@ -45,14 +48,24 @@ class Cache
 
     public function clear(): void
     {
-        if (!is_dir($this->path)) {
+        if (! is_dir($this->path)) {
             return;
         }
 
-        $iterator = new \DirectoryIterator($this->path);
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(
+                $this->path,
+                \FilesystemIterator::SKIP_DOTS | \FilesystemIterator::CURRENT_AS_FILEINFO
+            ),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
         foreach ($iterator as $file) {
+            $path = $file->getPathname();
             if ($file->isFile() && str_ends_with($file->getFilename(), '.php')) {
-                @unlink($file->getPathname());
+                @unlink($path);
+            } elseif ($file->isDir()) {
+                @rmdir($path);
             }
         }
     }

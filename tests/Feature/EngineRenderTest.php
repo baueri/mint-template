@@ -74,7 +74,7 @@ final class EngineRenderTest extends TestCase
         TempViews::put($viewsDir, 'c.php', '<mint-alert :type="error">SLOT</mint-alert>');
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponentDirective('alert', AlertComponent::class);
+        $compiler->registerComponent('alert', AlertComponent::class);
 
         $view = new MintView($viewsDir, new Cache($cacheDir), $compiler);
         $out = $view->render('c.php');

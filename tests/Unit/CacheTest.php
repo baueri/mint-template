@@ -18,6 +18,7 @@ final class CacheTest extends TestCase
 
         $this->assertFileExists($file);
         $this->assertStringEndsWith('.php', $file);
+        $this->assertMatchesRegularExpression('#/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{40}\.php$#', $file);
     }
 
     public function testClearRemovesCompiledFiles(): void
@@ -31,6 +32,7 @@ final class CacheTest extends TestCase
         $cache->clear();
 
         $this->assertFileDoesNotExist($file);
+        $this->assertDirectoryDoesNotExist(dirname($file));
     }
 }
 

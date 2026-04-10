@@ -65,5 +65,52 @@ final class MintCompilerTest extends TestCase
 
         $this->assertStringContainsString('<?php echo e($name); ?>', $php);
     }
+
+    public function testDuplicateRegisterComponentThrows(): void
+    {
+        $compiler = new MintCompiler(sys_get_temp_dir());
+        $compiler->registerComponent('chip', 'X\\Chip');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $compiler->registerComponent('chip', 'X\\Chip2');
+    }
+
+    public function testRegisterViewComponentAfterRegisterComponentSameNameThrows(): void
+    {
+        $compiler = new MintCompiler(sys_get_temp_dir());
+        $compiler->registerComponent('chip', 'X\\Chip');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $compiler->registerViewComponent('chip', 'partial.php');
+    }
+
+    public function testReservedComponentNameThrows(): void
+    {
+        $compiler = new MintCompiler(sys_get_temp_dir());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $compiler->registerComponent('include', 'X\\Y');
+    }
+
+    public function testComponentNameCannotUseTemplateNamespaceSyntax(): void
+    {
+        $compiler = new MintCompiler(sys_get_temp_dir());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $compiler->registerComponent('acme::widget', 'X\\Y');
+    }
+
+    public function testRegisterDirectiveDuplicateMintTagThrows(): void
+    {
+        $compiler = new MintCompiler(sys_get_temp_dir());
+        $compiler->registerDirective(
+            new \Baueri\Mint\Directive\DOM\CustomComponentDirective('zap', 'A\\B', $compiler)
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $compiler->registerDirective(
+            new \Baueri\Mint\Directive\DOM\ViewComponentDirective('zap', 'c.php', $compiler)
+        );
+    }
 }
 

@@ -145,7 +145,7 @@ final class DirectivesRenderTest extends TestCase
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponentDirective('hello', HelloComponent::class);
+        $compiler->registerComponent('hello', HelloComponent::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'hello.php', ['name' => 'Ivan']);
 
@@ -160,7 +160,7 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put($viewsDir, 'custom.php', '<mint-greet :name="Ivan">SLOT</mint-greet>');
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponentDirective('greet', GreetComponent::class);
+        $compiler->registerComponent('greet', GreetComponent::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'custom.php');
 
@@ -180,7 +180,7 @@ final class DirectivesRenderTest extends TestCase
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponentDirective('book', BookSpreadComponent::class);
+        $compiler->registerComponent('book', BookSpreadComponent::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'book.php', [
             'bookTitle' => 'Mint',
@@ -203,7 +203,7 @@ final class DirectivesRenderTest extends TestCase
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponentDirective('pair', PairSpreadComponent::class);
+        $compiler->registerComponent('pair', PairSpreadComponent::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'pair.php', [
             'a' => '1',
@@ -223,7 +223,7 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put($viewsDir, 'page-book.php', '<mint-book-shell class="book" data-kind="paper" />');
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponentDirective('book-shell', BookShellComponent::class);
+        $compiler->registerComponent('book-shell', BookShellComponent::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'page-book.php');
 
@@ -317,6 +317,50 @@ final class DirectivesRenderTest extends TestCase
 
         $this->assertStringContainsString('<body class="page">', $out);
         $this->assertStringContainsString('<p>Hi</p>', $out);
+    }
+
+    public function testViewComponentRendersTemplateWithPropsAndSlot(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put(
+            $viewsDir,
+            'components/badge.php',
+            '<span class="badge">{{ $label }}: {{ $slot }}</span>'
+        );
+        TempViews::put(
+            $viewsDir,
+            'vc-page.php',
+            '<mint-badge :label="{ $l }">inner</mint-badge>'
+        );
+
+        $compiler = new MintCompiler($viewsDir);
+        $compiler->registerViewComponent('badge', 'components/badge.php');
+
+        $out = $this->render($compiler, $viewsDir, $cacheDir, 'vc-page.php', ['l' => 'OK']);
+
+        $this->assertStringContainsString('OK', $out);
+        $this->assertStringContainsString('inner', $out);
+    }
+
+    public function testRenderNamespacedIncludeViaMintView(): void
+    {
+        $appDir = TempViews::makeDir('mint_app');
+        $extraDir = TempViews::makeDir('mint_extra');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($appDir, 'page.php', '<mint-include name="extra::frag.php" />');
+        TempViews::put($extraDir, 'frag.php', '<em>EXTRA</em>');
+
+        $compiler = new MintCompiler($appDir);
+        $cache = new Cache($cacheDir);
+        $view = new MintView($appDir, $cache, $compiler);
+        $view->registerNamespace('extra', $extraDir);
+
+        $out = $view->render('page.php');
+
+        $this->assertStringContainsString('EXTRA', $out);
     }
 }
 
