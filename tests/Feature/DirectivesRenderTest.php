@@ -118,13 +118,13 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('Hello', $out);
     }
 
-    public function testWrapDirectiveRendersLayoutWithPortalSection(): void
+    public function testWrapDirectiveRendersLayoutWithSlot(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
 
-        TempViews::put($viewsDir, 'layout.php', '<div class="layout"><mint-yield name="layout"/></div>');
-        TempViews::put($viewsDir, 'page.php', '<mint-wrap view="layout"><span>BODY</span></mint-wrap>');
+        TempViews::put($viewsDir, 'layout.php', '<div class="layout">{{ $slot }}</div>');
+        TempViews::put($viewsDir, 'page.php', '<mint-wrap path="layout.php"><span>BODY</span></mint-wrap>');
 
         $compiler = new MintCompiler($viewsDir);
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'page.php');
@@ -299,13 +299,13 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'layout.php',
-            '<html><body class="{{{ $bodyClass ?? \'\' }}}"><main><mint-yield name="layout"/></main></body></html>'
+            '<html><body class="{{{ $bodyClass ?? \'\' }}}"><main>{{ $slot }}</main></body></html>'
         );
 
         TempViews::put(
             $viewsDir,
             'page.php',
-            '<mint-wrap view="layout" :body-class="{ $wrapClass }"><p>Hi</p></mint-wrap>'
+            '<mint-wrap path="layout.php" :body-class="{ $wrapClass }"><p>Hi</p></mint-wrap>'
         );
 
         $compiler = new MintCompiler($viewsDir);

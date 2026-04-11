@@ -1,4 +1,4 @@
-<mint-wrap view="layout" :body-class="{'demo-basic'}">
+<mint-wrap path="layout.php" :body-class="{'demo-basic'}">
 <div>
   <h1>Hello {{ $name }}</h1>
 

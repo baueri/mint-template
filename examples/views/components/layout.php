@@ -17,7 +17,7 @@
   </head>
   <body class="{{{ $bodyClass ?? '' }}}">
     <main>
-      <mint-yield name="layout" />
+      {{ $slot }}
     </main>
   </body>
 </html>

@@ -23,36 +23,30 @@ final class WrapDirective implements DOMDirective
 
     public function compileOpen(DOMElement $node): string
     {
-        $view = $node->getAttribute('view');
-
-        if (!$view) {
-            throw new RuntimeException('mint-wrap requires a view attribute');
+        $path = trim($node->getAttribute('path'));
+        if ($path === '') {
+            throw new RuntimeException('mint-wrap requires a path attribute');
         }
 
-        // Buffer everything inside <mint-wrap> so we can set it as a section at runtime,
-        // then render the layout template (parent) in the same render environment.
+        // Buffer children so we can pass them as $slot when rendering the layout.
         return "<?php ob_start(); ?>\n";
     }
 
     public function compileClose(DOMElement $node): string
     {
-        $view = $node->getAttribute('view');
-        if (!$view) {
-            throw new RuntimeException('mint-wrap requires a view attribute');
+        $path = trim($node->getAttribute('path'));
+        if ($path === '') {
+            throw new RuntimeException('mint-wrap requires a path attribute');
         }
 
-        $viewPhp = addslashes($view . '.php');
+        $pathPhp = addslashes($path);
         $propsArray = $this->propsArrayPhp($node);
 
-        // Order matters:
-        // - $__mint_data: page render data (defaults)
-        // - wrap props: explicit overrides for the layout
-        // - __mint_env: must always be the shared render environment (wins)
+        // Order: page data, wrap props, env, then slot (buffered body) last so it wins.
         return "<?php\n"
-            . "    \$__mint_env->sections['{$view}'] = ob_get_clean();\n"
-            . "    echo \$__mint_view->render('{$viewPhp}', array_merge(\$__mint_data ?? [], [\n"
+            . "    echo \$__mint_view->render('{$pathPhp}', array_merge(\$__mint_data ?? [], [\n"
             . "        {$propsArray}\n"
-            . "    ], ['__mint_env' => \$__mint_env]));\n"
+            . "    ], ['__mint_env' => \$__mint_env, 'slot' => ob_get_clean()]));\n"
             . "?>";
     }
 

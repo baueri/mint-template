@@ -1,4 +1,4 @@
-<mint-wrap view="layout" :body-class="{'site-features'}">
+<mint-wrap path="layout.php" :body-class="{'site-features'}">
     <article class="article">
         <header class="article__header">
             <h1 class="article__title">What you can build</h1>
@@ -11,11 +11,11 @@
         <ul class="feature-list">
             <li>
                 <h2 class="feature-list__title">Layouts with <code>mint-wrap</code></h2>
-                <p>Buffer page content, inject it into a parent layout via the shared <code>portal</code> section, and render navigation once.</p>
+                <p>Buffer page content, pass it to the layout as <code>{{ $slot }}</code>, and render navigation once.</p>
             </li>
             <li>
                 <h2 class="feature-list__title">Sections &amp; yields</h2>
-                <p><code>mint-yield</code> pulls named fragments from the render context so shells stay declarative.</p>
+                <p><code>mint-yield</code> pulls named fragments (from <code>mint-section</code>) into the layout; the default body uses <code>{{ $slot }}</code>.</p>
             </li>
             <li>
                 <h2 class="feature-list__title">Conditional &amp; loops</h2>

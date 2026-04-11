@@ -1,4 +1,4 @@
-<mint-wrap view="layout" :body-class="{'demo-components'}">
+<mint-wrap path="layout.php" :body-class="{'demo-components'}">
   <mint-section name="meta-head">
     <title>Components demo</title>
     <meta name="description" content="Components demo">

@@ -16,7 +16,7 @@
     </header>
 
     <main>
-      <mint-yield name="layout" />
+      {{ $slot }}
     </main>
 
     <footer>

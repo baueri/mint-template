@@ -40,7 +40,7 @@ echo $view->render("index.php", ["name" => "Alice"]);
 Call `MintView::share()` to register data that is merged into **every** `render()` call. Typical uses are app name, current user, CSRF token, or config snippets you do not want to pass manually each time.
 
 - **Override order:** `array_merge($shared, $renderData)` — keys in the second argument to `render()` win.
-- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-wrap`, nested layouts, and template-backed `<mint-…>` view components all see the same variables (component props still override shared keys for that template).
+- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-wrap`, nested layouts, and template-backed `<mint-…>` view components all see the same variables (component props still override shared keys for that template). For `mint-wrap`, the inner markup is merged last as `slot`, so it overrides a `slot` key from the page data if present.
 - **Reserved names:** Keys must be valid PHP variable names. Names starting with `__mint_` are rejected; they are reserved for the engine.
 
 ```php
@@ -188,11 +188,11 @@ Props, `:props`, slots, and forwarded HTML attributes behave like class-based co
 
 Registering the same component suffix twice (`registerComponent`, `registerViewComponent`, or `registerDirective` with a mint custom-tag directive) throws `InvalidArgumentException`.
 
-These suffixes are reserved for built-in tags: `include`, `wrap`, `section`, `yield`, `attrs`, `internal-compile-root` (compiler-only fragment wrapper; never use in templates). Third-party packages should use a **vendor prefix** in the suffix (for example `billing-invoice-row` → `<mint-billing-invoice-row>`) to avoid clashes with the app or other packages. Tag suffixes are **not** namespaced with `::`; only template path strings use that form.
+Reserved tag suffixes: `include`, `wrap`, `section`, `yield`, `attrs`. Third-party packages should use a **vendor prefix** (for example `billing-invoice-row` → `<mint-billing-invoice-row>`). Component tag names do not use `::`; only template **paths** do (see below).
 
 ### View namespaces (for template paths only)
 
-Register extra view directories on `MintView` (instance-based; pass `MintView` into your package services from the app container). This affects **template resolution only** (`render`, `mint-include`, `mint-wrap`, `Component::view()`, `registerViewComponent`’s template argument). It does **not** change how you choose `registerComponent` / `registerViewComponent` tag names.
+Register extra directories on `MintView` so logical paths like `acme::partials/x.php` resolve. That applies to `render()`, `mint-include`, `mint-wrap`, `Component::view()`, and `registerViewComponent`; it does not change component tag names.
 
 ```php
 $view->registerNamespace('acme', __DIR__ . '/vendor/acme/widget/views');
@@ -206,18 +206,20 @@ $view->render('acme::partials/pill.php', $data);
 
 ```html
 <mint-include path="acme::partials/pill.php" />
-<mint-wrap view="acme::layout"></mint-wrap>
+<mint-wrap path="acme::layout.php"></mint-wrap>
 ```
 
 Relative paths may not use `..` segments; resolved files must stay under the base views path or the registered namespace directory.
 
-### Compiled cache layout
+### Layouts (`mint-wrap`)
 
-Under the hood, compiled templates are written to nested subdirectories of the cache path (by hash of the logical template name) so large projects do not put thousands of files in one folder. Callers still use the same logical names and `Cache` API as before.
+Wrap a page (or fragment) in another template using the same `path` convention as `mint-include` (include the `.php` suffix). Everything inside `<mint-wrap>…</mint-wrap>` is captured and passed to the layout as the **`slot`** key, so the shell can output it with `{{ $slot }}`. Optional `:prop` attributes are merged into the layout data like other template renders.
 
-Each compiled file starts with a short comment naming the **logical template** (as passed to `render()`) and the **absolute source path**, which makes debugging easier.
+Use **`mint-section`** / **`mint-yield`** with a matching **`name`** for extra regions (for example a head block).
 
-`Cache::forget($logicalTemplate)` removes one compiled artifact (for example after a deploy hook).
+### Cache
+
+`$cache->forget('index.php')` drops the compiled file for one logical template (the same name you pass to `render()`). `clear()` removes all compiled files under the cache path.
 
 ### `:props` shorthand
 

@@ -224,7 +224,7 @@ final class DomDirectiveUnitTest extends TestCase
         $dom = new DOMDocument('1.0', 'UTF-8');
         libxml_use_internal_errors(true);
         $dom->loadHTML(
-            '<?xml encoding="UTF-8"><mint-wrap view="layout" :body-class="{ $c }"></mint-wrap>',
+            '<?xml encoding="UTF-8"><mint-wrap path="layout.php" :body-class="{ $c }"></mint-wrap>',
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
         libxml_clear_errors();
@@ -239,6 +239,8 @@ final class DomDirectiveUnitTest extends TestCase
         $this->assertStringContainsString("'bodyClass' =>", $php);
         $this->assertStringContainsString('$c', $php);
         $this->assertStringContainsString("'__mint_env' => \$__mint_env", $php);
+        $this->assertStringContainsString("'slot' => ob_get_clean()", $php);
+        $this->assertStringNotContainsString('sections', $php);
     }
 }
 

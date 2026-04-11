@@ -24,7 +24,7 @@
     </header>
 
     <main id="main" class="site-main">
-        <mint-yield name="layout" />
+        {{ $slot }}
     </main>
 
     <footer class="site-footer">
