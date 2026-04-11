@@ -188,7 +188,7 @@ Props, `:props`, slots, and forwarded HTML attributes behave like class-based co
 
 Registering the same component suffix twice (`registerComponent`, `registerViewComponent`, or `registerDirective` with a mint custom-tag directive) throws `InvalidArgumentException`.
 
-These suffixes are reserved for built-in tags: `include`, `wrap`, `section`, `yield`, `attrs`. Third-party packages should use a **vendor prefix** in the suffix (for example `billing-invoice-row` → `<mint-billing-invoice-row>`) to avoid clashes with the app or other packages. Tag suffixes are **not** namespaced with `::`; only template path strings use that form.
+These suffixes are reserved for built-in tags: `include`, `wrap`, `section`, `yield`, `attrs`, `internal-compile-root` (compiler-only fragment wrapper; never use in templates). Third-party packages should use a **vendor prefix** in the suffix (for example `billing-invoice-row` → `<mint-billing-invoice-row>`) to avoid clashes with the app or other packages. Tag suffixes are **not** namespaced with `::`; only template path strings use that form.
 
 ### View namespaces (for template paths only)
 

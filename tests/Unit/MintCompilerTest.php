@@ -23,6 +23,41 @@ final class MintCompilerTest extends TestCase
         $this->assertStringContainsString('<?php echo $name; ?>', $php);
     }
 
+    public function testBareMustacheFragmentIsNotWrappedInParagraphByParser(): void
+    {
+        $tmp = sys_get_temp_dir() . '/mint_' . bin2hex(random_bytes(8));
+        mkdir($tmp);
+
+        $file = $tmp . '/meta.php';
+        file_put_contents($file, "{{ og_image('images/logo.png') }}\n");
+
+        $compiler = new MintCompiler($tmp);
+        $php = $compiler->compile($file);
+
+        $this->assertStringContainsString("og_image('images/logo.png')", $php);
+        $this->assertStringNotContainsString('<p>', $php);
+        $this->assertStringNotContainsString('</p>', $php);
+    }
+
+    public function testFullHtmlDocumentIsNotWrappedSoDoctypeTreeSurvives(): void
+    {
+        $tmp = sys_get_temp_dir() . '/mint_' . bin2hex(random_bytes(8));
+        mkdir($tmp);
+
+        $file = $tmp . '/layout.php';
+        file_put_contents(
+            $file,
+            "<!DOCTYPE html>\n<html lang=\"en\"><head><title>x</title></head><body>ok</body></html>\n"
+        );
+
+        $compiler = new MintCompiler($tmp);
+        $php = $compiler->compile($file);
+
+        $this->assertStringContainsString('<html lang="en">', $php);
+        $this->assertStringContainsString('</html>', $php);
+        $this->assertStringNotContainsString('mint-internal-compile-root', $php);
+    }
+
     public function testCompilesMustacheInAttributes(): void
     {
         $tmp = sys_get_temp_dir() . '/mint_' . bin2hex(random_bytes(8));
@@ -90,6 +125,14 @@ final class MintCompilerTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $compiler->registerComponent('include', 'X\\Y');
+    }
+
+    public function testReservedCompilerFragmentRootSuffixThrows(): void
+    {
+        $compiler = new MintCompiler(sys_get_temp_dir());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $compiler->registerComponent('internal-compile-root', 'X\\Y');
     }
 
     public function testComponentNameCannotUseTemplateNamespaceSyntax(): void

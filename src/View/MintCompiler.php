@@ -27,8 +27,16 @@ class MintCompiler
 {
     private const PHP_PLACEHOLDER_PREFIX = '__MINT_PHP_BLOCK_';
 
+    /**
+     * Synthetic element wrapping fragment templates for DOM parsing only.
+     * Its opening/closing tags are never emitted — only child nodes are compiled.
+     */
+    private const COMPILE_FRAGMENT_ROOT_TAG = 'mint-internal-compile-root';
+
     /** Suffixes that produce tags reserved by built-in DOM directives or the compiler. */
-    private const RESERVED_MINT_COMPONENT_SUFFIXES = ['include', 'wrap', 'section', 'yield', 'attrs'];
+    private const RESERVED_MINT_COMPONENT_SUFFIXES = [
+        'include', 'wrap', 'section', 'yield', 'attrs', 'internal-compile-root',
+    ];
 
     private RenderContext $context;
 
@@ -137,11 +145,15 @@ class MintCompiler
 
         $template = $this->rewriteAttributesEchoInOpeningTags($template);
 
+        $useFragmentRoot = $this->shouldWrapInCompileFragmentRoot($template);
+
         $dom = new DOMDocument('1.0', 'UTF-8');
         libxml_use_internal_errors(true);
         // libxml defaults HTML fragments to ISO-8859-1; declare UTF-8 so multibyte
         // literals (e.g. em dash, arrows) in template files are not mis-parsed.
-        $htmlUtf8 = '<?xml encoding="UTF-8">' . $template;
+        $tag = self::COMPILE_FRAGMENT_ROOT_TAG;
+        $htmlUtf8 = '<?xml encoding="UTF-8">'
+            . ($useFragmentRoot ? "<{$tag}>{$template}</{$tag}>" : $template);
         $ok = $dom->loadHTML($htmlUtf8, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         if (! $ok) {
             $errors = libxml_get_errors();
@@ -156,8 +168,50 @@ class MintCompiler
             throw new \RuntimeException($msg);
         }
 
-        $compiled = $this->walk($dom);
+        $root = $dom->documentElement;
+        if ($root === null) {
+            throw new \RuntimeException("Failed to parse template HTML (no document element): {$templatePath}");
+        }
+
+        if ($useFragmentRoot) {
+            if (strcasecmp($root->tagName, self::COMPILE_FRAGMENT_ROOT_TAG) !== 0) {
+                throw new \RuntimeException(
+                    "Unexpected DOM root <{$root->tagName}> after fragment parse: {$templatePath}"
+                );
+            }
+            $compiled = '';
+            foreach ($root->childNodes as $child) {
+                $compiled .= $this->walk($child);
+            }
+        } else {
+            $compiled = $this->walk($dom);
+        }
+
         return $this->restorePhpBlocks($compiled, $phpBlocks);
+    }
+
+    /**
+     * Bare text / mustaches at the document top become <p>…</p> under HTML parsing.
+     * Wrapping those fragments in a synthetic root avoids that, while full documents
+     * (DOCTYPE or <html>) must not be wrapped — libxml would break the tree.
+     */
+    private function shouldWrapInCompileFragmentRoot(string $templateForDom): bool
+    {
+        $s = ltrim($templateForDom, "\r\n\t ");
+        $placeholderPrefix = preg_quote(self::PHP_PLACEHOLDER_PREFIX, '/');
+        $s = preg_replace('/^(?:' . $placeholderPrefix . '\d+__\s*)+/', '', $s) ?? $s;
+        $s = ltrim($s, "\r\n\t ");
+        if ($s === '') {
+            return true;
+        }
+        if (preg_match('/^<!DOCTYPE\b/i', $s) === 1) {
+            return false;
+        }
+        if (preg_match('/^<html\b/i', $s) === 1) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
