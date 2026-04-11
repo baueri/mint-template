@@ -105,6 +105,50 @@ final class EngineRenderTest extends TestCase
         $out2 = $view->render('page.php');
         $this->assertStringContainsString('V2', $out2);
     }
+    
+    public function testOnBeforeRenderListenerReceivesExpectedArgumentsAndRunsBeforeTemplate(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'before.php', '<p>{{ $injected }}</p>');
+
+        $compiler = new MintCompiler($viewsDir);
+        $view     = new MintView($viewsDir, new Cache($cacheDir), $compiler);
+
+        $calls = [];
+        $view->onBeforeRender(function (string $template, string $path, array &$data) use (&$calls): void {
+            $calls[] = compact('template', 'path');
+            $data['injected'] = 'from-listener';
+        });
+
+        $out = $view->render('before.php');
+
+        $this->assertCount(1, $calls);
+        $this->assertSame('before.php', $calls[0]['template']);
+        $this->assertFileExists($calls[0]['path']);
+        $this->assertStringContainsString('from-listener', $out);
+    }
+
+    public function testOnBeforeRenderRunsBeforeOnRender(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'order.php', '<i>x</i>');
+
+        $compiler = new MintCompiler($viewsDir);
+        $view     = new MintView($viewsDir, new Cache($cacheDir), $compiler);
+
+        $order = [];
+        $view->onBeforeRender(function () use (&$order): void { $order[] = 'before'; });
+        $view->onRender(function () use (&$order): void { $order[] = 'after'; });
+
+        $view->render('order.php');
+
+        $this->assertSame(['before', 'after'], $order);
+    }
+
     public function testOnRenderListenerReceivesExpectedArguments(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
@@ -168,6 +212,25 @@ final class EngineRenderTest extends TestCase
         $view->onRender(function () use (&$fired): void { $fired[] = 'b'; });
 
         $view->render('multi.php');
+
+        $this->assertSame(['a', 'b'], $fired);
+    }
+
+    public function testMultipleBeforeRenderListenersAllFire(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'mbefore.php', '<b>z</b>');
+
+        $compiler = new MintCompiler($viewsDir);
+        $view     = new MintView($viewsDir, new Cache($cacheDir), $compiler);
+
+        $fired = [];
+        $view->onBeforeRender(function () use (&$fired): void { $fired[] = 'a'; });
+        $view->onBeforeRender(function () use (&$fired): void { $fired[] = 'b'; });
+
+        $view->render('mbefore.php');
 
         $this->assertSame(['a', 'b'], $fired);
     }

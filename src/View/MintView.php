@@ -6,6 +6,13 @@ namespace Baueri\Mint;
 
 class MintView implements View
 {
+    private const EVT_BEFORE_RENDER = 'beforeRender';
+
+    /** After successful render (see {@see onRender()}). */
+    private const EVT_RENDER = 'render';
+
+    private const EVT_COMPILE = 'compile';
+
     /** @var array<string, string> namespace => absolute directory */
     private array $namespaces = [];
 
@@ -13,20 +20,18 @@ class MintView implements View
     private array $shared = [];
 
     /**
-     * Listeners called after each successful render.
-     * Signature: (string $template, string $compiledPath, float $ms, int $bytes): void
+     * Event name => listeners (FIFO). Signatures per event:
+     * - {@see self::EVT_BEFORE_RENDER}: (string $template, string $compiledPath, array &$data): void
+     * - {@see self::EVT_RENDER}: (string $template, string $compiledPath, float $ms, int $bytes): void
+     * - {@see self::EVT_COMPILE}: (string $template, string $sourcePath, string $compiledPath): void
      *
-     * @var callable[]
+     * @var array<string, list<callable>>
      */
-    private array $renderListeners = [];
-
-    /**
-     * Listeners called after a template is (re)compiled and written to the cache.
-     * Signature: (string $template, string $sourcePath, string $compiledPath): void
-     *
-     * @var callable[]
-     */
-    private array $compileListeners = [];
+    private array $listeners = [
+        self::EVT_BEFORE_RENDER => [],
+        self::EVT_RENDER => [],
+        self::EVT_COMPILE => [],
+    ];
 
     public function __construct(
         public readonly string $viewsPath,
@@ -89,13 +94,23 @@ class MintView implements View
     }
 
     /**
+     * Register a listener that fires before each template render (after data merge, before the compiled file runs).
+     *
+     * Callback signature: (string $template, string $compiledPath, array &$data): void
+     */
+    public function onBeforeRender(callable $listener): void
+    {
+        $this->pushListener(self::EVT_BEFORE_RENDER, $listener);
+    }
+
+    /**
      * Register a listener that fires after each template render.
      *
      * Callback signature: (string $template, string $compiledPath, float $ms, int $bytes): void
      */
     public function onRender(callable $listener): void
     {
-        $this->renderListeners[] = $listener;
+        $this->pushListener(self::EVT_RENDER, $listener);
     }
 
     /**
@@ -105,7 +120,7 @@ class MintView implements View
      */
     public function onCompile(callable $listener): void
     {
-        $this->compileListeners[] = $listener;
+        $this->pushListener(self::EVT_COMPILE, $listener);
     }
 
     public function render(string $template, array $data = []): string
@@ -117,7 +132,7 @@ class MintView implements View
             $this->cache->write($template, $php, $source);
 
             $compiledPath = $this->cache->compiledPath($template);
-            foreach ($this->compileListeners as $listener) {
+            foreach ($this->listeners[self::EVT_COMPILE] as $listener) {
                 $listener($template, $source, $compiledPath);
             }
         }
@@ -128,24 +143,34 @@ class MintView implements View
             $data['slot'] = $__mint_slot;
         }
 
+        $compiledPath = $this->cache->compiledPath($template);
+        foreach ($this->listeners[self::EVT_BEFORE_RENDER] as $listener) {
+            $listener($template, $compiledPath, $data);
+        }
+
         $__mint_data = $data;
         $__mint_env = $data['__mint_env'] ?? new RenderContext();
 
         extract($data, EXTR_SKIP);
 
         $__mint_view = $this;
-        $__mint_compiled_path = $this->cache->compiledPath($template);
+        $__mint_compiled_path = $compiledPath;
 
         $__mint_start = microtime(true);
         ob_start();
         include $__mint_compiled_path;
         $__mint_output = ob_get_clean();
 
-        foreach ($this->renderListeners as $listener) {
-            $listener($template, $__mint_compiled_path, (microtime(true) - $__mint_start) * 1000, strlen($__mint_output));
+        foreach ($this->listeners[self::EVT_RENDER] as $listener) {
+            $listener($template, $compiledPath, (microtime(true) - $__mint_start) * 1000, strlen($__mint_output));
         }
 
         return $__mint_output;
+    }
+
+    private function pushListener(string $event, callable $listener): void
+    {
+        $this->listeners[$event][] = $listener;
     }
 
     private function resolveTemplateSourcePath(string $template): string
