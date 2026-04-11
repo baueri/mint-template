@@ -105,6 +105,72 @@ final class EngineRenderTest extends TestCase
         $out2 = $view->render('page.php');
         $this->assertStringContainsString('V2', $out2);
     }
+    public function testOnRenderListenerReceivesExpectedArguments(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'listen.php', '<p>hello</p>');
+
+        $compiler = new MintCompiler($viewsDir);
+        $view     = new MintView($viewsDir, new Cache($cacheDir), $compiler);
+
+        $calls = [];
+        $view->onRender(function (string $template, string $compiledPath, float $ms, int $bytes) use (&$calls): void {
+            $calls[] = compact('template', 'compiledPath', 'ms', 'bytes');
+        });
+
+        $out = $view->render('listen.php');
+
+        $this->assertCount(1, $calls);
+        $this->assertSame('listen.php', $calls[0]['template']);
+        $this->assertFileExists($calls[0]['compiledPath']);
+        $this->assertGreaterThanOrEqual(0.0, $calls[0]['ms']);
+        $this->assertSame(strlen($out), $calls[0]['bytes']);
+    }
+
+    public function testOnCompileListenerFiresOnlyWhenTemplateIsCompiled(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'compile.php', '<p>world</p>');
+
+        $compiler = new MintCompiler($viewsDir);
+        $view     = new MintView($viewsDir, new Cache($cacheDir), $compiler);
+
+        $compileCalls = [];
+        $view->onCompile(function (string $template, string $sourcePath, string $compiledPath) use (&$compileCalls): void {
+            $compileCalls[] = compact('template', 'sourcePath', 'compiledPath');
+        });
+
+        $view->render('compile.php'); // triggers compile
+        $view->render('compile.php'); // cache is fresh — should NOT trigger compile again
+
+        $this->assertCount(1, $compileCalls);
+        $this->assertSame('compile.php', $compileCalls[0]['template']);
+        $this->assertFileExists($compileCalls[0]['sourcePath']);
+        $this->assertFileExists($compileCalls[0]['compiledPath']);
+    }
+
+    public function testMultipleListenersAllFire(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'multi.php', '<span>x</span>');
+
+        $compiler = new MintCompiler($viewsDir);
+        $view     = new MintView($viewsDir, new Cache($cacheDir), $compiler);
+
+        $fired = [];
+        $view->onRender(function () use (&$fired): void { $fired[] = 'a'; });
+        $view->onRender(function () use (&$fired): void { $fired[] = 'b'; });
+
+        $view->render('multi.php');
+
+        $this->assertSame(['a', 'b'], $fired);
+    }
 }
 
 final class AlertModule extends Module

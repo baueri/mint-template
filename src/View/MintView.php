@@ -12,6 +12,22 @@ class MintView implements View
     /** @var array<string, mixed> merged into every {@see render()} (per-render keys override) */
     private array $shared = [];
 
+    /**
+     * Listeners called after each successful render.
+     * Signature: (string $template, string $compiledPath, float $ms, int $bytes): void
+     *
+     * @var callable[]
+     */
+    private array $renderListeners = [];
+
+    /**
+     * Listeners called after a template is (re)compiled and written to the cache.
+     * Signature: (string $template, string $sourcePath, string $compiledPath): void
+     *
+     * @var callable[]
+     */
+    private array $compileListeners = [];
+
     public function __construct(
         public readonly string $viewsPath,
         public readonly CacheInterface $cache,
@@ -72,6 +88,26 @@ class MintView implements View
         return $this->shared;
     }
 
+    /**
+     * Register a listener that fires after each template render.
+     *
+     * Callback signature: (string $template, string $compiledPath, float $ms, int $bytes): void
+     */
+    public function onRender(callable $listener): void
+    {
+        $this->renderListeners[] = $listener;
+    }
+
+    /**
+     * Register a listener that fires whenever a template is (re)compiled and written to cache.
+     *
+     * Callback signature: (string $template, string $sourcePath, string $compiledPath): void
+     */
+    public function onCompile(callable $listener): void
+    {
+        $this->compileListeners[] = $listener;
+    }
+
     public function render(string $template, array $data = []): string
     {
         $source = $this->resolveTemplateSourcePath($template);
@@ -79,6 +115,11 @@ class MintView implements View
         if (! $this->cache->isFresh($template, $source)) {
             $php = $this->compiler->compile($source);
             $this->cache->write($template, $php, $source);
+
+            $compiledPath = $this->cache->compiledPath($template);
+            foreach ($this->compileListeners as $listener) {
+                $listener($template, $source, $compiledPath);
+            }
         }
 
         $data = array_merge($this->shared, $data);
@@ -93,11 +134,18 @@ class MintView implements View
         extract($data, EXTR_SKIP);
 
         $__mint_view = $this;
+        $__mint_compiled_path = $this->cache->compiledPath($template);
 
+        $__mint_start = microtime(true);
         ob_start();
-        include $this->cache->compiledPath($template);
+        include $__mint_compiled_path;
+        $__mint_output = ob_get_clean();
 
-        return ob_get_clean();
+        foreach ($this->renderListeners as $listener) {
+            $listener($template, $__mint_compiled_path, (microtime(true) - $__mint_start) * 1000, strlen($__mint_output));
+        }
+
+        return $__mint_output;
     }
 
     private function resolveTemplateSourcePath(string $template): string
