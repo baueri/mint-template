@@ -1,8 +1,8 @@
 
-<mint-wrap path="layout.php" :body-class="{'demo-layout'}">
+<mint-extend path="layout.php" :body-class="{'demo-layout'}">
   <mint-section name="heading">
     <h1>{{ $title }}</h1>
-    <p>Example layout page rendered through <code>mint-wrap</code>.</p>
+    <p>Example layout page rendered through <code>mint-extend</code>.</p>
   </mint-section>
 
   <article>
@@ -19,4 +19,4 @@
   <mint-section name="footer">
     <p>Footer section</p>
   </mint-section>
-</mint-wrap>
+</mint-extend>

@@ -1,4 +1,4 @@
-<mint-wrap path="layout.php" :body-class="{'demo-components'}">
+<mint-extend path="layout.php" :body-class="{'demo-components'}">
   <mint-section name="meta-head">
     <title>Components demo</title>
     <meta name="description" content="Components demo">
@@ -15,5 +15,5 @@
       Something went wrong for {{ $user['name'] }}.
     </mint-alert>
   </div>
-</mint-wrap>
+</mint-extend>
 

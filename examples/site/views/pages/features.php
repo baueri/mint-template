@@ -1,4 +1,4 @@
-<mint-wrap path="layout.php" :body-class="{'site-features'}">
+<mint-extend path="layout.php" :body-class="{'site-features'}">
     <article class="article">
         <header class="article__header">
             <h1 class="article__title">What you can build</h1>
@@ -10,7 +10,7 @@
 
         <ul class="feature-list">
             <li>
-                <h2 class="feature-list__title">Layouts with <code>mint-wrap</code></h2>
+                <h2 class="feature-list__title">Layouts with <code>mint-extend</code></h2>
                 <p>Buffer page content, pass it to the layout as <code>{{ $slot }}</code>, and render navigation once.</p>
             </li>
             <li>
@@ -39,4 +39,4 @@
             <a class="button button--primary" href="/">← Back to showcase</a>
         </p>
     </article>
-</mint-wrap>
+</mint-extend>

@@ -9,7 +9,7 @@ use Baueri\Mint\MintCompiler;
 use Baueri\Mint\RenderContext;
 use RuntimeException;
 
-final class WrapDirective implements DOMDirective
+final class ExtendDirective implements DOMDirective
 {
     public function __construct(
         private readonly MintCompiler $compiler,
@@ -18,14 +18,14 @@ final class WrapDirective implements DOMDirective
 
     public function supports(DOMElement $node): bool
     {
-        return $node->tagName === 'mint-wrap';
+        return $node->tagName === 'mint-extend';
     }
 
     public function compileOpen(DOMElement $node): string
     {
         $path = trim($node->getAttribute('path'));
         if ($path === '') {
-            throw new RuntimeException('mint-wrap requires a path attribute');
+            throw new RuntimeException('mint-extend requires a path attribute');
         }
 
         // Buffer children so we can pass them as $slot when rendering the layout.
@@ -36,7 +36,7 @@ final class WrapDirective implements DOMDirective
     {
         $path = trim($node->getAttribute('path'));
         if ($path === '') {
-            throw new RuntimeException('mint-wrap requires a path attribute');
+            throw new RuntimeException('mint-extend requires a path attribute');
         }
 
         $pathPhp = addslashes($path);

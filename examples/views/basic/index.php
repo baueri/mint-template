@@ -1,4 +1,4 @@
-<mint-wrap path="layout.php" :body-class="{'demo-basic'}">
+<mint-extend path="layout.php" :body-class="{'demo-basic'}">
 <div>
   <h1>Hello {{ $name }}</h1>
 
@@ -38,4 +38,4 @@
   <h2>Shared variables</h2>
   <p>From <code>share()</code>: <strong>{{ $appName }}</strong> — contact <code>{{ $supportEmail }}</code>.</p>
 </div>
-</mint-wrap>
+</mint-extend>

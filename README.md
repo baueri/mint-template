@@ -40,7 +40,7 @@ echo $view->render("index.php", ["name" => "Alice"]);
 Call `MintView::share()` to register data that is merged into **every** `render()` call. Typical uses are app name, current user, CSRF token, or config snippets you do not want to pass manually each time.
 
 - **Override order:** `array_merge($shared, $renderData)` — keys in the second argument to `render()` win.
-- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-wrap`, nested layouts, and template-backed `<mint-…>` view components all see the same variables (component props still override shared keys for that template). For `mint-wrap`, the inner markup is merged last as `slot`, so it overrides a `slot` key from the page data if present.
+- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-extend`, nested layouts, and template-backed `<mint-…>` view components all see the same variables (component props still override shared keys for that template). For `mint-extend`, the inner markup is merged last as `slot`, so it overrides a `slot` key from the page data if present.
 - **Reserved names:** Keys must be valid PHP variable names. Names starting with `__mint_` are rejected; they are reserved for the engine.
 
 ```php
@@ -188,11 +188,11 @@ Props, `:props`, slots, and forwarded HTML attributes behave like class-based co
 
 Registering the same component suffix twice (`registerComponent`, `registerViewComponent`, or `registerDirective` with a mint custom-tag directive) throws `InvalidArgumentException`.
 
-Reserved tag suffixes: `include`, `wrap`, `section`, `yield`, `attrs`. Third-party packages should use a **vendor prefix** (for example `billing-invoice-row` → `<mint-billing-invoice-row>`). Component tag names do not use `::`; only template **paths** do (see below).
+Reserved tag suffixes: `include`, `extend`, `section`, `yield`, `attrs`. Third-party packages should use a **vendor prefix** (for example `billing-invoice-row` → `<mint-billing-invoice-row>`). Component tag names do not use `::`; only template **paths** do (see below).
 
 ### View namespaces (for template paths only)
 
-Register extra directories on `MintView` so logical paths like `acme::partials/x.php` resolve. That applies to `render()`, `mint-include`, `mint-wrap`, `Component::view()`, and `registerViewComponent`; it does not change component tag names.
+Register extra directories on `MintView` so logical paths like `acme::partials/x.php` resolve. That applies to `render()`, `mint-include`, `mint-extend`, `Component::view()`, and `registerViewComponent`; it does not change component tag names.
 
 ```php
 $view->registerNamespace('acme', __DIR__ . '/vendor/acme/widget/views');
@@ -206,14 +206,14 @@ $view->render('acme::partials/pill.php', $data);
 
 ```html
 <mint-include path="acme::partials/pill.php" />
-<mint-wrap path="acme::layout.php"></mint-wrap>
+<mint-extend path="acme::layout.php"></mint-extend>
 ```
 
 Relative paths may not use `..` segments; resolved files must stay under the base views path or the registered namespace directory.
 
-### Layouts (`mint-wrap`)
+### Layouts (`mint-extend`)
 
-Wrap a page (or fragment) in another template using the same `path` convention as `mint-include` (include the `.php` suffix). Everything inside `<mint-wrap>…</mint-wrap>` is captured and passed to the layout as the **`slot`** key, so the shell can output it with `{{ $slot }}`. Optional `:prop` attributes are merged into the layout data like other template renders.
+Wrap a page (or fragment) in another template using the same `path` convention as `mint-include` (include the `.php` suffix). Everything inside `<mint-extend>…</mint-extend>` is captured and passed to the layout as the **`slot`** key, so the shell can output it with `{{ $slot }}`. Optional `:prop` attributes are merged into the layout data like other template renders.
 
 Use **`mint-section`** / **`mint-yield`** with a matching **`name`** for extra regions (for example a head block).
 

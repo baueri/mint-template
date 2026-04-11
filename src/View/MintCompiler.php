@@ -14,7 +14,7 @@ use Baueri\Mint\Directive\DOM\IfDirective;
 use Baueri\Mint\Directive\DOM\IncludeDirective;
 use Baueri\Mint\Directive\DOM\RepeatDirective;
 use Baueri\Mint\Directive\DOM\SectionDirective;
-use Baueri\Mint\Directive\DOM\WrapDirective;
+use Baueri\Mint\Directive\DOM\ExtendDirective;
 use Baueri\Mint\Directive\DOM\YieldDirective;
 use Baueri\Mint\Directive\Text\IfDirective as TextIfDirective;
 use Baueri\Mint\Directive\Text\TextDirectiveInterface;
@@ -35,7 +35,7 @@ class MintCompiler
 
     /** Suffixes that produce tags reserved by built-in DOM directives or the compiler. */
     private const RESERVED_MINT_COMPONENT_SUFFIXES = [
-        'include', 'wrap', 'section', 'yield', 'attrs', 'internal-compile-root',
+        'include', 'extend', 'section', 'yield', 'attrs', 'internal-compile-root',
     ];
 
     private RenderContext $context;
@@ -60,7 +60,7 @@ class MintCompiler
             new SectionDirective($this, $this->context),
             new YieldDirective(),
             new IncludeDirective(),
-            new WrapDirective($this, $this->context)
+            new ExtendDirective($this, $this->context)
         ];
 
         $this->textDirectives = [

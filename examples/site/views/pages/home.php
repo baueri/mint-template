@@ -1,4 +1,4 @@
-<mint-wrap path="layout.php" :body-class="{'site-home'}">
+<mint-extend path="layout.php" :body-class="{'site-home'}">
     <section class="hero">
         <p class="hero__eyebrow">Template compiler</p>
         <h1 class="hero__title">Mint, in full color</h1>
@@ -99,4 +99,4 @@
             <p>Preview mode is off.</p>
         @endif
     </section>
-</mint-wrap>
+</mint-extend>

@@ -89,7 +89,7 @@ final class EngineRenderTest extends TestCase
         $cacheDir = TempViews::makeDir('mint_cache');
 
         TempViews::put($viewsDir, 'layout.php', '<div>V1 <mint-yield name="portal" /></div>');
-        TempViews::put($viewsDir, 'page.php', '<mint-wrap path="layout.php"><mint-section name="portal">BODY</mint-section></mint-wrap>');
+        TempViews::put($viewsDir, 'page.php', '<mint-extend path="layout.php"><mint-section name="portal">BODY</mint-section></mint-extend>');
 
         $compiler = new MintCompiler($viewsDir);
         $view = new MintView($viewsDir, new Cache($cacheDir), $compiler);

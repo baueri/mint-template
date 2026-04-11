@@ -118,13 +118,13 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('Hello', $out);
     }
 
-    public function testWrapDirectiveRendersLayoutWithSlot(): void
+    public function testExtendDirectiveRendersLayoutWithSlot(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
 
         TempViews::put($viewsDir, 'layout.php', '<div class="layout">{{ $slot }}</div>');
-        TempViews::put($viewsDir, 'page.php', '<mint-wrap path="layout.php"><span>BODY</span></mint-wrap>');
+        TempViews::put($viewsDir, 'page.php', '<mint-extend path="layout.php"><span>BODY</span></mint-extend>');
 
         $compiler = new MintCompiler($viewsDir);
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'page.php');
@@ -305,7 +305,7 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'page.php',
-            '<mint-wrap path="layout.php" :body-class="{ $wrapClass }"><p>Hi</p></mint-wrap>'
+            '<mint-extend path="layout.php" :body-class="{ $wrapClass }"><p>Hi</p></mint-extend>'
         );
 
         $compiler = new MintCompiler($viewsDir);
