@@ -205,7 +205,7 @@ $view->render('acme::partials/pill.php', $data);
 ```
 
 ```html
-<mint-include name="acme::partials/pill.php" />
+<mint-include path="acme::partials/pill.php" />
 <mint-wrap view="acme::layout"></mint-wrap>
 ```
 

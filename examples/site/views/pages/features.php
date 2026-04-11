@@ -31,7 +31,7 @@
             </li>
             <li>
                 <h2 class="feature-list__title">Template includes</h2>
-                <p><code>mint-include</code> renders another template and can receive props via <code>:props</code> / <code>:key</code>.</p>
+                <p><code>mint-include</code> takes a <code>path</code> to another template and can receive props via <code>:props</code> / <code>:key</code>.</p>
             </li>
         </ul>
 

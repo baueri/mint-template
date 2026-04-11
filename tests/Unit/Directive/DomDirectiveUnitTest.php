@@ -203,7 +203,7 @@ final class DomDirectiveUnitTest extends TestCase
         $dom = new DOMDocument('1.0', 'UTF-8');
         libxml_use_internal_errors(true);
         $dom->loadHTML(
-            '<?xml encoding="UTF-8"><mint-include name="partials/card.php" :props="{$a, $a, $c}" :a="{ $override }" />',
+            '<?xml encoding="UTF-8"><mint-include path="partials/card.php" :props="{$a, $a, $c}" :a="{ $override }" />',
             LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
         );
         libxml_clear_errors();

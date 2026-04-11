@@ -11,8 +11,8 @@ use RuntimeException;
  * Render another template at runtime, inheriting the current render data.
  *
  * Usage:
- *   <mint-include name="partials/card.php" />
- *   <mint-include name="partials/card.php" :props="{$a, $b}" :a="{ $override }" />
+ *   <mint-include path="partials/card.php" />
+ *   <mint-include path="partials/card.php" :props="{$a, $b}" :a="{ $override }" />
  */
 final class IncludeDirective implements DOMDirective
 {
@@ -23,15 +23,15 @@ final class IncludeDirective implements DOMDirective
 
     public function compileOpen(DOMElement $node): string
     {
-        $name = trim($node->getAttribute('name'));
-        if ($name === '') {
-            throw new RuntimeException('mint-include requires a name attribute');
+        $path = trim($node->getAttribute('path'));
+        if ($path === '') {
+            throw new RuntimeException('mint-include requires a path attribute');
         }
 
         $propsArray = $this->propsArrayPhp($node);
-        $namePhp = addslashes($name);
+        $pathPhp = addslashes($path);
 
-        return "<?php echo \$__mint_view->render('{$namePhp}', array_merge(\$__mint_data ?? [], [\n    {$propsArray}\n])); ?>";
+        return "<?php echo \$__mint_view->render('{$pathPhp}', array_merge(\$__mint_data ?? [], [\n    {$propsArray}\n])); ?>";
     }
 
     public function compileClose(DOMElement $node): string

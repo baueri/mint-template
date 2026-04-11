@@ -120,7 +120,7 @@ final class MintViewTest extends TestCase
     public function testMintIncludeInheritsSharedVariables(): void
     {
         $appDir = TempViews::makeDir('mint_app_views');
-        TempViews::put($appDir, 'outer.php', '<mint-include name="inner.php" />');
+        TempViews::put($appDir, 'outer.php', '<mint-include path="inner.php" />');
         TempViews::put($appDir, 'inner.php', '<em>{{ $sharedKey }}</em>');
 
         $view = new MintView($appDir, new Cache(TempViews::makeDir('mint_cache')), new MintCompiler($appDir));

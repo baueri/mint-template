@@ -240,7 +240,7 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'include.php',
-            '<div><mint-include name="partials/card.php" :props="{$a, $a, $c}" :a="{ $override }" /></div>'
+            '<div><mint-include path="partials/card.php" :props="{$a, $a, $c}" :a="{ $override }" /></div>'
         );
 
         $compiler = new MintCompiler($viewsDir);
@@ -378,7 +378,7 @@ final class DirectivesRenderTest extends TestCase
         $extraDir = TempViews::makeDir('mint_extra');
         $cacheDir = TempViews::makeDir('mint_cache');
 
-        TempViews::put($appDir, 'page.php', '<mint-include name="extra::frag.php" />');
+        TempViews::put($appDir, 'page.php', '<mint-include path="extra::frag.php" />');
         TempViews::put($extraDir, 'frag.php', '<em>EXTRA</em>');
 
         $compiler = new MintCompiler($appDir);

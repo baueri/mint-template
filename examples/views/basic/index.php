@@ -32,7 +32,7 @@
   <h2>mint-include</h2>
   <div>
     <?php $title = 'Starter plan'; $price = 9; $badge = 'Most popular'; ?>
-    <mint-include name="partials/price-card.php" :props="{$title, $price, $badge}" />
+    <mint-include path="partials/price-card.php" :props="{$title, $price, $badge}" />
   </div>
 
   <h2>Shared variables</h2>
