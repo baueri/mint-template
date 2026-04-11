@@ -323,6 +323,20 @@ class MintCompiler
                 }
             }
 
+            $tag = $node->tagName;
+            if (str_starts_with($tag, AbstractModuleDirective::TAG_PREFIX)) {
+                $suffix = substr($tag, strlen(AbstractModuleDirective::TAG_PREFIX));
+                throw new \InvalidArgumentException(
+                    "Unknown module \"<{$tag}>\". Did you forget to call registerModule('{$suffix}', ...)?"
+                );
+            }
+
+            if (str_starts_with($tag, 'mint-') && $tag !== self::COMPILE_FRAGMENT_ROOT_TAG) {
+                throw new \InvalidArgumentException(
+                    "Unknown built-in directive \"<{$tag}>\". Check the tag name for typos."
+                );
+            }
+
             return $this->compileElement($node);
         }
 

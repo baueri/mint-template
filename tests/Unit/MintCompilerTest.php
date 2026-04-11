@@ -156,5 +156,35 @@ final class MintCompilerTest extends TestCase
             new \Baueri\Mint\Directive\DOM\ViewModuleDirective('zap', 'c.php', $compiler)
         );
     }
+
+    public function testUnregisteredModuleTagThrows(): void
+    {
+        $tmp = sys_get_temp_dir() . '/mint_' . bin2hex(random_bytes(8));
+        mkdir($tmp);
+
+        $file = $tmp . '/t.php';
+        file_put_contents($file, '<div><mod-ghost /></div>');
+
+        $compiler = new MintCompiler($tmp);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/mod-ghost/');
+        $compiler->compile($file);
+    }
+
+    public function testUnknownMintDirectiveTagThrows(): void
+    {
+        $tmp = sys_get_temp_dir() . '/mint_' . bin2hex(random_bytes(8));
+        mkdir($tmp);
+
+        $file = $tmp . '/t.php';
+        file_put_contents($file, '<div><mint-typo /></div>');
+
+        $compiler = new MintCompiler($tmp);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/mint-typo/');
+        $compiler->compile($file);
+    }
 }
 
