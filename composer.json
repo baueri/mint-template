@@ -29,6 +29,9 @@
             "email": "ivan.bauer90@gmail.com"
         }
     ],
+    "bin": [
+        "bin/mint"
+    ],
     "require": {
         "php": "^8.1",
         "ext-dom": "*",

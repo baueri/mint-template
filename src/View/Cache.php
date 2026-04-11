@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Baueri\Mint;
 
-class Cache
+class Cache implements CacheInterface
 {
     public function __construct(
         private readonly string $path

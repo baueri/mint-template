@@ -1,0 +1,53 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Locate the Composer autoloader whether this package is the root or a dependency.
+foreach ([
+    __DIR__ . '/../vendor/autoload.php',  // root package
+    __DIR__ . '/../../../autoload.php',   // installed as a dependency
+] as $autoload) {
+    if (file_exists($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+use Baueri\Mint\Cache;
+use Baueri\Mint\MintCli;
+
+$output = static fn(string $line) => print($line . PHP_EOL);
+$cli    = new MintCli($output);
+
+// Parse subcommand and --key=value / --key value options from $argv.
+$command = null;
+$opts    = [];
+
+$tokens = array_slice($argv, 1);
+for ($i = 0, $n = count($tokens); $i < $n; $i++) {
+    $token = $tokens[$i];
+    if (preg_match('/^--([a-z][a-z0-9-]*)=(.*)$/i', $token, $m)) {
+        $opts[$m[1]] = $m[2];
+    } elseif (preg_match('/^--([a-z][a-z0-9-]*)$/i', $token, $m) && isset($tokens[$i + 1]) && ! str_starts_with($tokens[$i + 1], '--')) {
+        $opts[$m[1]] = $tokens[++$i];
+    } elseif ($command === null && ! str_starts_with($token, '-')) {
+        $command = $token;
+    }
+}
+
+$cache = isset($opts['cache']) ? $opts['cache'] : null;
+
+switch ($command) {
+    case 'clear':
+        if ($cache === null) {
+            fwrite(STDERR, 'Missing --cache. Usage: mint clear --cache=<path>' . PHP_EOL);
+            exit(1);
+        }
+        $cli->clear(new Cache($cache));
+        break;
+
+    default:
+        fwrite(STDERR, 'Usage: mint clear --cache=<path>' . PHP_EOL);
+        exit(1);
+}

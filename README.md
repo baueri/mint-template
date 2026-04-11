@@ -293,6 +293,38 @@ Register:
 $compiler->registerModule('alert', Alert::class);
 ```
 
+## CLI
+
+### Clear the cache
+
+```bash
+vendor/bin/mint clear --cache=var/cache
+```
+
+Removes all compiled files from the cache directory. Safe to run without any knowledge of registered modules.
+
+### Framework integration (`MintCli`)
+
+`compile-all` and `watch` require a fully configured `MintCompiler` (with all modules registered) to produce correct output. Use `MintCli` directly from within your application's bootstrap or console command where that context is available:
+
+```php
+use Baueri\Mint\MintCli;
+
+// $output is any callable(string): void — e.g. Symfony Console's writeln
+$cli = new MintCli(fn(string $line) => $output->writeln($line));
+
+// Clear compiled cache
+$cli->clear($view->cache);
+
+// Pre-compile all templates (modules must be registered on $view->compiler first)
+$cli->compileAll($view->compiler, $view->viewsPath, $view->cache);
+
+// Watch for changes and recompile (modules must be registered on $view->compiler first)
+$cli->watch($view->compiler, $view->viewsPath, $view->cache, pollIntervalMs: 500);
+```
+
+`MintView::viewsPath`, `MintView::cache`, and `MintView::compiler` are all `public readonly`.
+
 ## Development
 
 ```bash

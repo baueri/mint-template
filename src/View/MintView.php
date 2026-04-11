@@ -13,9 +13,9 @@ class MintView implements View
     private array $shared = [];
 
     public function __construct(
-        private readonly string $viewsPath,
-        private readonly Cache $cache,
-        private readonly MintCompiler $compiler
+        public readonly string $viewsPath,
+        public readonly CacheInterface $cache,
+        public readonly MintCompiler $compiler
     ) {
     }
 
