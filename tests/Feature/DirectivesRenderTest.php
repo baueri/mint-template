@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Baueri\Mint\Tests\Feature;
 
 use Baueri\Mint\Cache;
-use Baueri\Mint\Component\Component;
+use Baueri\Mint\Module\Module;
 use Baueri\Mint\Context;
 use Baueri\Mint\MintCompiler;
 use Baueri\Mint\MintView;
@@ -133,7 +133,7 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('BODY', $out);
     }
 
-    public function testRegisteredComponentRendersWithProps(): void
+    public function testRegisteredModuleRendersWithProps(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
@@ -141,26 +141,26 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'hello.php',
-            '<mint-hello :name="{ $name }" />'
+            '<mod-hello :name="{ $name }" />'
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponent('hello', HelloComponent::class);
+        $compiler->registerModule('hello', HelloModule::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'hello.php', ['name' => 'Ivan']);
 
         $this->assertStringContainsString('Hello Ivan', $out);
     }
 
-    public function testCustomComponentDirectiveRendersSlotAndProps(): void
+    public function testCustomModuleDirectiveRendersSlotAndProps(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
 
-        TempViews::put($viewsDir, 'custom.php', '<mint-greet :name="Ivan">SLOT</mint-greet>');
+        TempViews::put($viewsDir, 'custom.php', '<mod-greet :name="Ivan">SLOT</mod-greet>');
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponent('greet', GreetComponent::class);
+        $compiler->registerModule('greet', GreetModule::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'custom.php');
 
@@ -176,11 +176,11 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'book.php',
-            '<mint-book :props="{$bookTitle, $author, $isbn}" />'
+            '<mod-book :props="{$bookTitle, $author, $isbn}" />'
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponent('book', BookSpreadComponent::class);
+        $compiler->registerModule('book', BookSpreadModule::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'book.php', [
             'bookTitle' => 'Mint',
@@ -199,11 +199,11 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'pair.php',
-            '<mint-pair :props="{$a, $b}" :b="{ $override }" />'
+            '<mod-pair :props="{$a, $b}" :b="{ $override }" />'
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponent('pair', PairSpreadComponent::class);
+        $compiler->registerModule('pair', PairSpreadModule::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'pair.php', [
             'a' => '1',
@@ -220,10 +220,10 @@ final class DirectivesRenderTest extends TestCase
         $cacheDir = TempViews::makeDir('mint_cache');
 
         TempViews::put($viewsDir, 'components/book-shell.php', '<div{{ $attributes }}>inside</div>');
-        TempViews::put($viewsDir, 'page-book.php', '<mint-book-shell class="book" data-kind="paper" />');
+        TempViews::put($viewsDir, 'page-book.php', '<mod-book-shell class="book" data-kind="paper" />');
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponent('book-shell', BookShellComponent::class);
+        $compiler->registerModule('book-shell', BookShellModule::class);
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'page-book.php');
 
@@ -291,7 +291,7 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('Y', $out);
     }
 
-    public function testMintWrapPassesPropsIntoLayoutRender(): void
+    public function testMintExtendPassesPropsIntoLayoutRender(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
@@ -319,7 +319,7 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('<p>Hi</p>', $out);
     }
 
-    public function testViewComponentRendersTemplateWithPropsAndSlot(): void
+    public function testViewModuleRendersTemplateWithPropsAndSlot(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
@@ -332,11 +332,11 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'vc-page.php',
-            '<mint-badge :label="{ $l }">inner</mint-badge>'
+            '<mod-badge :label="{ $l }">inner</mod-badge>'
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerViewComponent('badge', 'components/badge.php');
+        $compiler->registerViewModule('badge', 'components/badge.php');
 
         $out = $this->render($compiler, $viewsDir, $cacheDir, 'vc-page.php', ['l' => 'OK']);
 
@@ -344,7 +344,7 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('inner', $out);
     }
 
-    public function testViewComponentTemplateSeesSharedVariables(): void
+    public function testViewModuleTemplateSeesSharedVariables(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
@@ -357,11 +357,11 @@ final class DirectivesRenderTest extends TestCase
         TempViews::put(
             $viewsDir,
             'vc-shared-page.php',
-            '<mint-site-chip />'
+            '<mod-site-chip />'
         );
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerViewComponent('site-chip', 'components/site-chip.php');
+        $compiler->registerViewModule('site-chip', 'components/site-chip.php');
 
         $cache = new Cache($cacheDir);
         $view = new MintView($viewsDir, $cache, $compiler);
@@ -392,7 +392,7 @@ final class DirectivesRenderTest extends TestCase
     }
 }
 
-final class HelloComponent extends Component
+final class HelloModule extends Module
 {
     public function render(Context $context): string
     {
@@ -400,7 +400,7 @@ final class HelloComponent extends Component
     }
 }
 
-final class GreetComponent extends Component
+final class GreetModule extends Module
 {
     public function render(Context $context): string
     {
@@ -410,7 +410,7 @@ final class GreetComponent extends Component
     }
 }
 
-final class BookSpreadComponent extends Component
+final class BookSpreadModule extends Module
 {
     public function render(Context $context): string
     {
@@ -420,7 +420,7 @@ final class BookSpreadComponent extends Component
     }
 }
 
-final class PairSpreadComponent extends Component
+final class PairSpreadModule extends Module
 {
     public function render(Context $context): string
     {
@@ -428,11 +428,10 @@ final class PairSpreadComponent extends Component
     }
 }
 
-final class BookShellComponent extends Component
+final class BookShellModule extends Module
 {
     public function render(Context $context): string
     {
         return $this->view($context, 'components/book-shell.php', $context->all());
     }
 }
-

@@ -7,16 +7,16 @@
         </p>
         <div class="hero__actions">
             <a class="button button--primary" href="/features">See what ships</a>
-            <a class="button button--ghost" href="#components-heading">Browse components</a>
+            <a class="button button--ghost" href="#components-heading">Browse modules</a>
         </div>
     </section>
 
     <section class="section" aria-labelledby="stats-heading">
         <h2 id="stats-heading" class="section__title">At a glance</h2>
         <div class="stats-grid">
-            <mint-stat-tile :label="{'Public templates'}" :value="{ (string) $stat_repos }" />
-            <mint-stat-tile :label="{'Community stars'}" :value="{ $stat_stars }" />
-            <mint-stat-tile :label="{'Uptime target'}" :value="{ $stat_uptime }" />
+            <mod-stat-tile :label="{'Public templates'}" :value="{ (string) $stat_repos }" />
+            <mod-stat-tile :label="{'Community stars'}" :value="{ $stat_stars }" />
+            <mod-stat-tile :label="{'Uptime target'}" :value="{ $stat_uptime }" />
         </div>
     </section>
 
@@ -57,21 +57,21 @@
 
     <section class="section section--split" aria-labelledby="components-heading">
         <div>
-            <h2 id="components-heading" class="section__title">Components</h2>
+            <h2 id="components-heading" class="section__title">Modules</h2>
             <p class="section__lead">
                 Self-closing tags skip <code>ob_start</code>. Use a body for HTML slots, or
                 <code>:slot="…"</code> for a string slot without nested markup.
             </p>
 
-            <mint-alert x:if="{ $preview }" :type="{'success'}" :slot="Action successfully executed"/>
+            <mod-alert x:if="{ $preview }" :type="{'success'}" :slot="Action successfully executed"/>
 
-            <mint-alert :type="{'warning'}">
+            <mod-alert :type="{'warning'}">
                 <strong>Heads up:</strong> this message uses a <em>default slot</em> for rich HTML.
-            </mint-alert>
+            </mod-alert>
         </div>
 
         <div>
-            <mint-feature-callout
+            <mod-feature-callout
                 :title="{'Feature callouts'}"
                 :subtitle="{'Nested views + slot forwarding'}"
             >
@@ -79,15 +79,15 @@
                     This block is compiled as a custom tag. Inner markup becomes <code>$slot</code> in the
                     component view.
                 </p>
-            </mint-feature-callout>
+            </mod-feature-callout>
 
             <?php $title = 'Feature callouts 2'; $subtitle = 'Convenient shorthand to pass properties'; ?>
-            <mint-feature-callout :props="{$title, $subtitle}" style="margin-top:1rem;">
+            <mod-feature-callout :props="{$title, $subtitle}" style="margin-top:1rem;">
                 <p>
                     This is a feature callout with a title and subtitle like this: <br />
                     <code>:props="{$title, $subtitle}"</code> <br/> instead of <br/> <code>:title="{$title} :subtitle="{$subtitle}"</code>.
                 </p>
-            </mint-feature-callout>
+            </mod-feature-callout>
         </div>
     </section>
 

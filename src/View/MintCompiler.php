@@ -18,9 +18,9 @@ use Baueri\Mint\Directive\DOM\ExtendDirective;
 use Baueri\Mint\Directive\DOM\YieldDirective;
 use Baueri\Mint\Directive\Text\IfDirective as TextIfDirective;
 use Baueri\Mint\Directive\Text\TextDirectiveInterface;
-use Baueri\Mint\Directive\DOM\AbstractMintCustomTagDirective;
-use Baueri\Mint\Directive\DOM\CustomComponentDirective;
-use Baueri\Mint\Directive\DOM\ViewComponentDirective;
+use Baueri\Mint\Directive\DOM\AbstractModuleDirective;
+use Baueri\Mint\Directive\DOM\CustomModuleDirective;
+use Baueri\Mint\Directive\DOM\ViewModuleDirective;
 use Baueri\Mint\Directive\Text\ForeachDirective as TextForeachDirective;
 
 class MintCompiler
@@ -34,7 +34,7 @@ class MintCompiler
     private const COMPILE_FRAGMENT_ROOT_TAG = 'mint-internal-compile-root';
 
     /** Suffixes that produce tags reserved by built-in DOM directives or the compiler. */
-    private const RESERVED_MINT_COMPONENT_SUFFIXES = [
+    private const RESERVED_MINT_DIRECTIVE_SUFFIXES = [
         'include', 'extend', 'section', 'yield', 'attrs', 'internal-compile-root',
     ];
 
@@ -47,7 +47,7 @@ class MintCompiler
     private array $textDirectives;
 
     /** @var array<string, true> */
-    private array $registeredMintComponentSuffixes = [];
+    private array $registeredModuleSuffixes = [];
 
     public function __construct(private readonly string $viewPath)
     {
@@ -74,52 +74,46 @@ class MintCompiler
      */
     public function registerDirective(DOMDirective $directive): void
     {
-        if ($directive instanceof AbstractMintCustomTagDirective) {
-            $this->reserveMintComponentSuffix($directive->mintTagSuffix());
+        if ($directive instanceof AbstractModuleDirective) {
+            $this->reserveModuleSuffix($directive->moduleSuffix());
         }
 
         $this->domDirectives[] = $directive;
     }
 
     /**
-     * Register a component: the tag name is `mint-` plus $name (e.g. `alert` → `<mint-alert>`).
+     * Register a module: the tag name is `mod-` plus $name (e.g. `alert` → `<mod-alert>`).
      * $name must not contain `::` (that syntax is reserved for template paths on {@see MintView}).
      */
-    public function registerComponent(string $name, string $class): void
+    public function registerModule(string $name, string $class): void
     {
-        $this->registerDirective(new CustomComponentDirective($name, $class, $this));
+        $this->registerDirective(new CustomModuleDirective($name, $class, $this));
     }
 
     /**
-     * Register a view-only component: tag is `mint-` + $name (no `::` in $name). $template is a logical path
+     * Register a view-only module: tag is `mod-` + $name (no `::` in $name). $template is a logical path
      * resolved like {@see MintView::render()} (optional `namespace::path.php`).
      */
-    public function registerViewComponent(string $name, string $template): void
+    public function registerViewModule(string $name, string $template): void
     {
-        $this->registerDirective(new ViewComponentDirective($name, $template, $this));
+        $this->registerDirective(new ViewModuleDirective($name, $template, $this));
     }
 
-    private function reserveMintComponentSuffix(string $name): void
+    private function reserveModuleSuffix(string $name): void
     {
         if (str_contains($name, '::')) {
             throw new \InvalidArgumentException(
-                'Mint component names cannot contain "::". That syntax is only for template paths on MintView (e.g. registerViewComponent second argument); use a hyphenated tag suffix such as acme-badge.'
+                'Module names cannot contain "::". That syntax is only for template paths on MintView (e.g. registerViewModule second argument); use a hyphenated tag suffix such as acme-badge.'
             );
         }
 
-        if (in_array($name, self::RESERVED_MINT_COMPONENT_SUFFIXES, true)) {
+        if (isset($this->registeredModuleSuffixes[$name])) {
             throw new \InvalidArgumentException(
-                "Mint component name \"{$name}\" is reserved (built-in <mint-{$name}>). Use a vendor-prefixed name."
+                "Module \"{$name}\" is already registered. Use a different name or a vendor prefix."
             );
         }
 
-        if (isset($this->registeredMintComponentSuffixes[$name])) {
-            throw new \InvalidArgumentException(
-                "Mint component \"{$name}\" is already registered. Use a different name or a vendor prefix."
-            );
-        }
-
-        $this->registeredMintComponentSuffixes[$name] = true;
+        $this->registeredModuleSuffixes[$name] = true;
     }
 
     /**
@@ -304,7 +298,7 @@ class MintCompiler
                     // instead of `if (...) <h1>OK</h1> endif`.
                     if ($directive instanceof IfDirective) {
                         // Re-compile the element via walk() after stripping x:if so nested
-                        // directives (e.g. <mint-alert x:if="...">) are not emitted as raw HTML.
+                        // directives (e.g. <mod-alert x:if="...">) are not emitted as raw HTML.
                         $inner = $node->cloneNode(true);
                         $inner->removeAttribute('x:if');
 
@@ -316,7 +310,7 @@ class MintCompiler
                     $php = $directive->compileOpen($node);
 
                     $skipChildren = $directive->isSelfClosing()
-                        || ($directive instanceof AbstractMintCustomTagDirective && ! $directive->hasSlotBody($node));
+                        || ($directive instanceof AbstractModuleDirective && ! $directive->hasSlotBody($node));
 
                     if (! $skipChildren) {
                         foreach ($node->childNodes as $child) {

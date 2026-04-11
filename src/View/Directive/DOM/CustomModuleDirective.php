@@ -6,7 +6,7 @@ namespace Baueri\Mint\Directive\DOM;
 
 use Baueri\Mint\MintCompiler;
 
-class CustomComponentDirective extends AbstractMintCustomTagDirective
+class CustomModuleDirective extends AbstractModuleDirective
 {
     public function __construct(
         string $name,
@@ -24,7 +24,7 @@ class CustomComponentDirective extends AbstractMintCustomTagDirective
     {
         $class = str_replace('\\\\', '\\', $this->class);
 
-        return '$component = new \\' . $class . "();\n\n"
-            . 'echo $component->render($__mint_props);';
+        return '$module = new \\' . $class . "();\n\n"
+            . 'echo $module->render($__mint_props);';
     }
 }

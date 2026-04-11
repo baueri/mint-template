@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Baueri\Mint\Tests\Feature;
 
 use Baueri\Mint\Cache;
-use Baueri\Mint\Component\Component;
+use Baueri\Mint\Module\Module;
 use Baueri\Mint\Context;
 use Baueri\Mint\MintCompiler;
 use Baueri\Mint\MintView;
@@ -66,15 +66,15 @@ final class EngineRenderTest extends TestCase
         $this->assertStringContainsString('B', $out2);
     }
 
-    public function testRendersCustomComponentWithSlot(): void
+    public function testRendersCustomModuleWithSlot(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
         $cacheDir = TempViews::makeDir('mint_cache');
 
-        TempViews::put($viewsDir, 'c.php', '<mint-alert :type="error">SLOT</mint-alert>');
+        TempViews::put($viewsDir, 'c.php', '<mod-alert :type="error">SLOT</mod-alert>');
 
         $compiler = new MintCompiler($viewsDir);
-        $compiler->registerComponent('alert', AlertComponent::class);
+        $compiler->registerModule('alert', AlertModule::class);
 
         $view = new MintView($viewsDir, new Cache($cacheDir), $compiler);
         $out = $view->render('c.php');
@@ -107,7 +107,7 @@ final class EngineRenderTest extends TestCase
     }
 }
 
-final class AlertComponent extends Component
+final class AlertModule extends Module
 {
     public function render(Context $context): string
     {

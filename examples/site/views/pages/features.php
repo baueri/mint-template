@@ -4,7 +4,7 @@
             <h1 class="article__title">What you can build</h1>
             <p class="article__deck">
                 Mint focuses on a predictable compile step: HTML-ish templates become PHP includes, with a
-                handful of directives and first-class components.
+                handful of directives and first-class modules.
             </p>
         </header>
 
@@ -26,8 +26,8 @@
                 <p><code>x:repeat</code> lets you repeat a node a fixed number of times with a 0-based index.</p>
             </li>
             <li>
-                <h2 class="feature-list__title">Custom components</h2>
-                <p>Register <code>mint-*</code> tags that map to PHP classes; pass props with <code>:</code> attributes and optional slots.</p>
+                <h2 class="feature-list__title">Custom modules</h2>
+                <p>Register <code>mod-*</code> tags that map to PHP classes; pass props with <code>:</code> attributes and optional slots.</p>
             </li>
             <li>
                 <h2 class="feature-list__title">Template includes</h2>

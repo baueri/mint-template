@@ -7,9 +7,9 @@ namespace Baueri\Mint\Directive\DOM;
 use Baueri\Mint\MintCompiler;
 
 /**
- * Renders a registered view-only &lt;mint-{name}&gt; via Context::view()->render().
+ * Renders a registered view-only <mod-{name}> via Context::view()->render().
  */
-final class ViewComponentDirective extends AbstractMintCustomTagDirective
+final class ViewModuleDirective extends AbstractModuleDirective
 {
     public function __construct(
         string $name,

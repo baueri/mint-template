@@ -9,12 +9,12 @@ use DOMElement;
 use RuntimeException;
 
 /**
- * Shared compilation for &lt;mint-{name}&gt; tags (class-backed or view-backed).
+ * Shared compilation for <mod-{name}> tags (class-backed or view-backed modules).
  */
-abstract class AbstractMintCustomTagDirective implements DOMDirective
+abstract class AbstractModuleDirective implements DOMDirective
 {
-    /** @see MintCompiler::registerComponent() tag becomes mint-{name} */
-    public const TAG_PREFIX = 'mint-';
+    /** @see MintCompiler::registerModule() tag becomes mod-{name} */
+    public const TAG_PREFIX = 'mod-';
 
     public function __construct(
         protected readonly string $name,
@@ -25,7 +25,7 @@ abstract class AbstractMintCustomTagDirective implements DOMDirective
         }
     }
 
-    public function mintTagSuffix(): string
+    public function moduleSuffix(): string
     {
         return $this->name;
     }

@@ -4,7 +4,8 @@ A tiny PHP template compiler that supports:
 
 - `{{ ... }}` echo expressions
 - `@if / @elseif / @else / @endif`
-- DOM directives like `x:if`, `x:foreach`, and `mint-` prefixed component tags
+- DOM directives like `x:if`, `x:foreach`, and `mint-` prefixed directive tags
+- `mod-*` prefixed module tags for reusable UI components
 - `MintView::share()` for data merged into every template render
 
 ## Install
@@ -40,7 +41,7 @@ echo $view->render("index.php", ["name" => "Alice"]);
 Call `MintView::share()` to register data that is merged into **every** `render()` call. Typical uses are app name, current user, CSRF token, or config snippets you do not want to pass manually each time.
 
 - **Override order:** `array_merge($shared, $renderData)` — keys in the second argument to `render()` win.
-- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-extend`, nested layouts, and template-backed `<mint-…>` view components all see the same variables (component props still override shared keys for that template). For `mint-extend`, the inner markup is merged last as `slot`, so it overrides a `slot` key from the page data if present.
+- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-extend`, nested layouts, and template-backed `<mod-…>` view modules all see the same variables (module props still override shared keys for that template). For `mint-extend`, the inner markup is merged last as `slot`, so it overrides a `slot` key from the page data if present.
 - **Reserved names:** Keys must be valid PHP variable names. Names starting with `__mint_` are rejected; they are reserved for the engine.
 
 ```php
@@ -101,26 +102,27 @@ Repeat a fixed or dynamic count with a **0-based** index (`$i` runs from `0` to 
 <li x:repeat="{ 3 as $k }">{{ $k }}</li>
 ```
 
-## Custom components
+## Custom modules
 
-Custom components are just PHP classes (extending `Baueri\Mint\Component\Component`) that receive a `Baueri\Mint\Context`.
-The `Context` includes a reference to the current `MintView`, so components can render other templates.
+Modules are PHP classes (extending `Baueri\Mint\Module\Module`) that receive a `Baueri\Mint\Context`.
+The `Context` includes a reference to the current `MintView`, so modules can render other templates.
+Module tags use the `mod-` prefix to distinguish them from `mint-` directives.
 
-### Self-closing component
+### Self-closing module
 
 Template:
 
 ```html
-<mint-user-card :user="{ $user }" />
+<mod-user-card :user="{ $user }" />
 ```
 
-Component:
+Module:
 
 ```php
-use Baueri\Mint\Component\Component;
+use Baueri\Mint\Module\Module;
 use Baueri\Mint\Context;
 
-final class UserCard extends Component
+final class UserCard extends Module
 {
     public function render(Context $context): string
     {
@@ -131,17 +133,17 @@ final class UserCard extends Component
 }
 ```
 
-Template-backed component (recommended for larger components):
+Template-backed module (recommended for larger modules):
 
 ```php
-use Baueri\Mint\Component\Component;
+use Baueri\Mint\Module\Module;
 use Baueri\Mint\Context;
 
-final class UserCard extends Component
+final class UserCard extends Module
 {
     public function render(Context $context): string
     {
-        // Option A: use the helper from the base Component
+        // Option A: use the helper from the base Module
         return $this->view($context, 'components/user-card.php', [
             'user' => $context->resolve('user'),
         ]);
@@ -166,33 +168,33 @@ final class UserCard extends Component
 Register:
 
 ```php
-$compiler->registerComponent('user-card', UserCard::class);
+$compiler->registerModule('user-card', UserCard::class);
 ```
 
-### View-only components
+### View-only modules
 
 When a tag only needs a template (no extra PHP class), register the view path directly. The **first argument** is the tag suffix (plain name, hyphens allowed; no `::`). The **second argument** is a logical template path and follows `MintView::render()` (optional `namespace::path.php` — see [View namespaces](#view-namespaces-for-template-paths)):
 
 ```php
-$compiler->registerViewComponent('badge', 'components/badge.php');
-$compiler->registerViewComponent('acme-pill', 'acme::widgets/pill.php');
+$compiler->registerViewModule('badge', 'components/badge.php');
+$compiler->registerViewModule('acme-pill', 'acme::widgets/pill.php');
 ```
 
 ```html
-<mint-badge :label="{ $title }">optional slot</mint-badge>
+<mod-badge :label="{ $title }">optional slot</mod-badge>
 ```
 
-Props, `:props`, slots, and forwarded HTML attributes behave like class-based components.
+Props, `:props`, slots, and forwarded HTML attributes behave like class-based modules.
 
-### Component names and collisions
+### Module names and collisions
 
-Registering the same component suffix twice (`registerComponent`, `registerViewComponent`, or `registerDirective` with a mint custom-tag directive) throws `InvalidArgumentException`.
+Registering the same module suffix twice (`registerModule`, `registerViewModule`, or `registerDirective` with a module directive) throws `InvalidArgumentException`.
 
-Reserved tag suffixes: `include`, `extend`, `section`, `yield`, `attrs`. Third-party packages should use a **vendor prefix** (for example `billing-invoice-row` → `<mint-billing-invoice-row>`). Component tag names do not use `::`; only template **paths** do (see below).
+Module tag names do not use `::`; only template **paths** do (see below).
 
 ### View namespaces (for template paths only)
 
-Register extra directories on `MintView` so logical paths like `acme::partials/x.php` resolve. That applies to `render()`, `mint-include`, `mint-extend`, `Component::view()`, and `registerViewComponent`; it does not change component tag names.
+Register extra directories on `MintView` so logical paths like `acme::partials/x.php` resolve. That applies to `render()`, `mint-include`, `mint-extend`, `Module::view()`, and `registerViewModule`; it does not change module tag names.
 
 ```php
 $view->registerNamespace('acme', __DIR__ . '/vendor/acme/widget/views');
@@ -226,28 +228,28 @@ Use **`mint-section`** / **`mint-yield`** with a matching **`name`** for extra r
 List simple PHP variables inside braces; each `$name` becomes context key `name` with that variable as the value (like object shorthand in JS):
 
 ```html
-<mint-book :props="{$bookTitle, $author, $isbn}" />
+<mod-book :props="{$bookTitle, $author, $isbn}" />
 ```
 
 Only tokens matching `\$\w+` are allowed (no expressions). You can combine with explicit `:attr` values; **explicit attributes override** the same key from `:props`.
 
-### Component with slots
+### Module with slots
 
 Template:
 
 ```html
-<mint-alert :type="error">
+<mod-alert :type="error">
   some error
-</mint-alert>
+</mod-alert>
 ```
 
-Component (slot content is available via `$context->slot()`):
+Module (slot content is available via `$context->slot()`):
 
 ```php
-use Baueri\Mint\Component\Component;
+use Baueri\Mint\Module\Module;
 use Baueri\Mint\Context;
 
-final class Alert extends Component
+final class Alert extends Module
 {
     public function render(Context $context): string
     {
@@ -259,13 +261,13 @@ final class Alert extends Component
 }
 ```
 
-Template-backed slot component:
+Template-backed slot module:
 
 ```php
-use Baueri\Mint\Component\Component;
+use Baueri\Mint\Module\Module;
 use Baueri\Mint\Context;
 
-final class Alert extends Component
+final class Alert extends Module
 {
     public function render(Context $context): string
     {
@@ -288,7 +290,7 @@ final class Alert extends Component
 Register:
 
 ```php
-$compiler->registerComponent('alert', Alert::class);
+$compiler->registerModule('alert', Alert::class);
 ```
 
 ## Development
@@ -301,4 +303,3 @@ vendor/bin/phpunit
 ## Examples
 
 See `examples/README.md`.
-
