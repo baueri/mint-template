@@ -5,17 +5,10 @@ declare(strict_types=1);
 namespace Baueri\Mint\Directive\DOM;
 
 use DOMElement;
-use Baueri\Mint\MintCompiler;
-use Baueri\Mint\RenderContext;
 use RuntimeException;
 
 final class ExtendDirective implements DOMDirective
 {
-    public function __construct(
-        private readonly MintCompiler $compiler,
-        private readonly RenderContext $context
-    ) {}
-
     public function supports(DOMElement $node): bool
     {
         return $node->tagName === 'mint-extend';

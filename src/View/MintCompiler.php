@@ -38,8 +38,6 @@ class MintCompiler
         'include', 'extend', 'section', 'yield', 'attrs', 'internal-compile-root',
     ];
 
-    private RenderContext $context;
-
     /** @var DOMDirective[] */
     private array $domDirectives;
 
@@ -51,16 +49,14 @@ class MintCompiler
 
     public function __construct(private readonly string $viewPath)
     {
-        $this->context = new RenderContext();
-
         $this->domDirectives = [
             new IfDirective(),
             new ForeachDirective($this),
             new RepeatDirective($this),
-            new SectionDirective($this, $this->context),
+            new SectionDirective(),
             new YieldDirective(),
             new IncludeDirective(),
-            new ExtendDirective($this, $this->context)
+            new ExtendDirective()
         ];
 
         $this->textDirectives = [
@@ -462,11 +458,6 @@ class MintCompiler
     public function compileNode(DOMNode $node): string
     {
         return $this->walk($node);
-    }
-
-    public function getContext(): RenderContext
-    {
-        return $this->context;
     }
 
     /**

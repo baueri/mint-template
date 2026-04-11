@@ -230,9 +230,7 @@ final class DomDirectiveUnitTest extends TestCase
         libxml_clear_errors();
         $node = $dom->documentElement;
 
-        $compiler = new \Baueri\Mint\MintCompiler(sys_get_temp_dir());
-        $ctx = new \Baueri\Mint\RenderContext();
-        $d = new ExtendDirective($compiler, $ctx);
+        $d = new ExtendDirective();
 
         $php = $d->compileClose($node);
         $this->assertStringContainsString("\$__mint_view->render('layout.php'", $php);
