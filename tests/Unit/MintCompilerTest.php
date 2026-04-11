@@ -58,6 +58,23 @@ final class MintCompilerTest extends TestCase
         $this->assertStringNotContainsString('mint-internal-compile-root', $php);
     }
 
+    public function testVoidElementsHaveNoClosingTag(): void
+    {
+        $tmp = sys_get_temp_dir() . '/mint_' . bin2hex(random_bytes(8));
+        mkdir($tmp);
+
+        $file = $tmp . '/head.php';
+        file_put_contents($file, '<meta charset="utf-8" /><link rel="stylesheet" href="/a.css" />');
+
+        $compiler = new MintCompiler($tmp);
+        $php = $compiler->compile($file);
+
+        $this->assertStringContainsString('<meta charset="utf-8">', $php);
+        $this->assertStringContainsString('<link rel="stylesheet" href="/a.css">', $php);
+        $this->assertStringNotContainsString('</meta>', $php);
+        $this->assertStringNotContainsString('</link>', $php);
+    }
+
     public function testCompilesMustacheInAttributes(): void
     {
         $tmp = sys_get_temp_dir() . '/mint_' . bin2hex(random_bytes(8));

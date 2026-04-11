@@ -365,6 +365,10 @@ class MintCompiler
         }
         $html .= '>';
 
+        if ($this->isHtmlVoidElement($tag)) {
+            return $html;
+        }
+
         foreach ($node->childNodes as $child) {
             $html .= $this->walk($child);
         }
@@ -372,6 +376,22 @@ class MintCompiler
         $html .= "</{$tag}>";
 
         return $html;
+    }
+
+    /**
+     * HTML void elements must not get a closing tag from the compiler; libxml
+     * still represents them as DOMElement nodes with no children.
+     *
+     * @see https://html.spec.whatwg.org/multipage/syntax.html#void-elements
+     */
+    private function isHtmlVoidElement(string $tagName): bool
+    {
+        static $void = [
+            'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+            'link', 'meta', 'param', 'source', 'track', 'wbr',
+        ];
+
+        return in_array(strtolower($tagName), $void, true);
     }
 
     private function compileAttribute(string $value): string
