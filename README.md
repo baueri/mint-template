@@ -1,12 +1,8 @@
-# Mint Template (Baueri\Mint)
+# Mint Template
 
-A tiny PHP template compiler that supports:
+**Mint** is a small PHP template engine: you write HTML-ish templates with mustaches and directives, the library compiles them to plain PHP, caches the result, and `include`s that file on each render. It uses PHP’s `ext-dom` / libxml for structure (layouts, `x:if`, includes) and stays usable without a framework—only `MintView`, `MintCompiler`, and a `Cache` implementation.
 
-- `{{ ... }}` echo expressions
-- `@if / @elseif / @else / @endif`
-- DOM directives like `x:if`, `x:foreach`, and `mint-` prefixed directive tags
-- `mod-*` prefixed module tags for reusable UI components
-- `MintView::share()` for data merged into every template render
+**PHP 8.1+**, `ext-dom`, `ext-libxml`.
 
 ## Install
 
@@ -14,240 +10,292 @@ A tiny PHP template compiler that supports:
 composer require baueri/mint-template
 ```
 
-## Basic usage
+Composer loads `e()` for HTML escaping from `src/View/helpers.php`. If you already define `e()` yourself, yours wins.
+
+---
+
+## First run
+
+**`bootstrap.php`**
 
 ```php
+<?php
+
+declare(strict_types=1);
+
 use Baueri\Mint\Cache;
 use Baueri\Mint\MintCompiler;
 use Baueri\Mint\MintView;
 
-require "vendor/autoload.php";
+require __DIR__ . '/vendor/autoload.php';
 
-$cache = new Cache(__DIR__ . "/var/cache");
-$compiler = new MintCompiler(__DIR__ . "/views");
-$view = new MintView(__DIR__ . "/views", $cache, $compiler);
+$viewsPath = __DIR__ . '/views';
+$cachePath = __DIR__ . '/var/cache/views';
 
-// Optional: variables merged into every render (per-render data overrides the same keys).
-$view->share("appName", "My App");
-$view->share([
-    "supportEmail" => "hello@example.com",
+$view = new MintView(
+    viewsPath: $viewsPath,
+    cache: new Cache($cachePath),
+    compiler: new MintCompiler($viewsPath),
+);
+
+$view->share('appName', 'My App');
+```
+
+**`public/index.php`** (or any front controller)
+
+```php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/../bootstrap.php';
+
+echo $view->render('welcome.php', ['name' => 'Ada']);
+```
+
+**`views/welcome.php`**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ $appName }}</title>
+  </head>
+  <body>
+    <p>Hello, {{{ $name }}}.</p>
+  </body>
+</html>
+```
+
+The first argument to `render()` is a **logical path** under `viewsPath` (e.g. `welcome.php`). The engine recompiles when the source file is newer than the cached PHP.
+
+---
+
+## Output: `{{` and `{{{`
+
+| Syntax | Compiles to | Typical use |
+|--------|-------------|-------------|
+| `{{ $x }}` | `<?php echo $x; ?>` | HTML you trust (or that is already safe) |
+| `{{{ $x }}}` | `<?php echo e($x); ?>` | Text from users or the database |
+
+**`views/demo.php`**
+
+```html
+<p>Raw (trusted markup): {{ $trustedHtml }}</p>
+<p>Escaped (user title): {{{ $userTitle }}}</p>
+```
+
+In **attribute values**, the same rules apply: `{{ }}` vs `{{{ }}}` inside quotes.
+
+---
+
+## Shared data
+
+`MintView::share()` merges into **every** `render()` call. Keys passed to `render()` override shared keys.
+
+```php
+$view->share('locale', 'en_GB');
+$view->share(['assetVersion' => 'v3']);
+
+echo $view->render('page.php', ['title' => 'Home']); // sees locale, assetVersion, title
+```
+
+Reserved: keys starting with `__mint_`, and names that are not valid PHP variable names, are rejected.
+
+---
+
+## Layout with `mint-extend` and `{{ $slot }}`
+
+Wrap a page in a parent template. Everything inside `<mint-extend>…</mint-extend>` is captured and passed to the layout as **`$slot`**. The `path` attribute is a logical template name (same rules as `render()`), including `.php`.
+
+**`views/layouts/app.php`** (parent)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ $title ?? $appName }}</title>
+  </head>
+  <body class="{{{ $bodyClass ?? '' }}}">
+    <header><strong>{{ $appName }}</strong></header>
+    <main>{{ $slot }}</main>
+  </body>
+</html>
+```
+
+**`views/pages/about.php`** (child)
+
+```html
+<mint-extend path="layouts/app.php" :title="{'About us'}">
+  <article>
+    <h1>About</h1>
+    <p>This body becomes <code>$slot</code> in the layout.</p>
+  </article>
+</mint-extend>
+```
+
+Optional attributes on `<mint-extend>` whose names start with `:` are passed into the layout as data. Kebab-case names become camelCase keys (e.g. `:body-class="{ $class }"` → `$bodyClass` in the layout). String literals can be written as `:title="{'About us'}"` (expression inside `{ ... }`).
+
+**`public/about.php`**
+
+```php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/../bootstrap.php';
+
+echo $view->render('pages/about.php', [
+    'appName' => 'Acme',
+    'bodyClass' => 'page-about',
 ]);
-
-echo $view->render("index.php", ["name" => "Alice"]);
 ```
 
-## Shared variables
+---
 
-Call `MintView::share()` to register data that is merged into **every** `render()` call. Typical uses are app name, current user, CSRF token, or config snippets you do not want to pass manually each time.
+## Named sections: `mint-section` and `mint-yield`
 
-- **Override order:** `array_merge($shared, $renderData)` — keys in the second argument to `render()` win.
-- **Propagation:** Shared data is included in `$__mint_data`, so `mint-include`, `mint-extend`, nested layouts, and template-backed `<mod-…>` view modules all see the same variables (module props still override shared keys for that template). For `mint-extend`, the inner markup is merged last as `slot`, so it overrides a `slot` key from the page data if present.
-- **Reserved names:** Keys must be valid PHP variable names. Names starting with `__mint_` are rejected; they are reserved for the engine.
+Child templates can push named fragments into a **`RenderContext`**; the layout prints them with `<mint-yield name="…" />`. Multiple sections with the same name are concatenated in order.
+
+**`views/layouts/site.php`**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ $title }}</title>
+    <mint-yield name="head" />
+  </head>
+  <body>
+    <header><mint-yield name="heading" /></header>
+    <main>{{ $slot }}</main>
+    <footer><mint-yield name="footer" /></footer>
+  </body>
+</html>
+```
+
+**`views/pages/article.php`**
+
+```html
+<mint-extend path="layouts/site.php" :title="{'Mint sections'}">
+  <mint-section name="head">
+    <meta name="description" content="Demo of mint-section / mint-yield" />
+  </mint-section>
+
+  <mint-section name="heading">
+    <h1>{{ $title }}</h1>
+  </mint-section>
+
+  <article>{{ $bodyHtml }}</article>
+
+  <mint-section name="footer">
+    <p>Thanks for reading.</p>
+  </mint-section>
+</mint-extend>
+```
 
 ```php
-$view->share("locale", "en_GB");
-
-$view->share([
-    "assetVersion" => "v12",
-    "features" => ["beta" => true],
+echo $view->render('pages/article.php', [
+    'title' => 'Mint sections',
+    'bodyHtml' => '<p>App-supplied HTML.</p>',
 ]);
-
-// This render sees locale, assetVersion, features, and name; name is only for this call.
-echo $view->render("page.php", ["name" => "Home"]);
 ```
 
-`shared()` returns the current map (useful for tests or debugging).
+Use `{{{ $bodyHtml }}}` instead of `{{ $bodyHtml }}` when the fragment is plain text or must be escaped.
 
-## Template syntax
+---
 
-### Echo
+## Partials: `mint-include`
 
-`{{ ... }}` compiles to raw output: `<?php echo ...; ?>`.
+Renders another template with the **current** data merged with optional props. Self-closing.
 
-Use **triple mustache** for escaped output:
-
-```php
-{{{ $html }}}
-```
-
-### Text directives
-
-```php
-@if ($user)
-  Hello {{ e($user['name']) }}
-@else
-  Guest
-@endif
-```
-
-### DOM directives
+**`views/partials/tag.php`**
 
 ```html
-<div x:if="{ $isLoggedIn }">Hello</div>
-
-<ul>
-  <li x:foreach="{ $users as $u }">{{ e($u['name']) }}</li>
-</ul>
+<span class="tag">{{{ $label }}}</span>
 ```
 
-Repeat a fixed or dynamic count with a **0-based** index (`$i` runs from `0` to `count - 1`):
+**`views/pages/tags-demo.php`**
 
 ```html
-<ul>
-  <li x:repeat="{ $n as $i }">Item {{ $i }}</li>
-</ul>
-```
-
-```html
-<li x:repeat="{ 3 as $k }">{{ $k }}</li>
-```
-
-## Custom modules
-
-Modules are PHP classes (extending `Baueri\Mint\Module\Module`) that receive a `Baueri\Mint\Context`.
-The `Context` includes a reference to the current `MintView`, so modules can render other templates.
-Module tags use the `mod-` prefix to distinguish them from `mint-` directives.
-
-### Self-closing module
-
-Template:
-
-```html
-<mod-user-card :user="{ $user }" />
-```
-
-Module:
-
-```php
-use Baueri\Mint\Module\Module;
-use Baueri\Mint\Context;
-
-final class UserCard extends Module
-{
-    public function render(Context $context): string
-    {
-        $user = $context->resolve('user');
-
-        return '<div class="card">' . e($user['name'] ?? '') . '</div>';
-    }
-}
-```
-
-Template-backed module (recommended for larger modules):
-
-```php
-use Baueri\Mint\Module\Module;
-use Baueri\Mint\Context;
-
-final class UserCard extends Module
-{
-    public function render(Context $context): string
-    {
-        // Option A: use the helper from the base Module
-        return $this->view($context, 'components/user-card.php', [
-            'user' => $context->resolve('user'),
-        ]);
-
-        // Option B (equivalent): render via the view stored in Context
-        // return $context->view()->render('components/user-card.php', [
-        //     'user' => $context->resolve('user'),
-        // ]);
-    }
-}
-```
-
-`views/components/user-card.php`:
-
-```php
-<div class="card">
-  <div class="card-title">{{ e($user['name'] ?? '') }}</div>
-  <div class="card-meta">{{ e($user['email'] ?? '') }}</div>
+<div>
+  <?php $label = 'PHP'; ?>
+  <mint-include path="partials/tag.php" :props="{$label}" />
 </div>
 ```
 
-Register:
+`:props="{$a, $b}"` maps simple variable names to keys `a`, `b`. Explicit `:key="{ $expr }"` overrides the same key from `:props`.
 
-```php
-$compiler->registerModule('user-card', UserCard::class);
+---
+
+## Conditionals and loops
+
+### Text directives (`@…`)
+
+Processed on the raw template **before** HTML parsing:
+
+```html
+@if ($showGreeting)
+  <p>Hello, {{{ $name }}}.</p>
+@else
+  <p>Hi there.</p>
+@endif
+
+@foreach ($items as $item)
+  <li>{{{ $item }}}</li>
+@endforeach
 ```
 
-### View-only modules
+### DOM attributes (`x:if`, `x:foreach`, `x:repeat`)
 
-When a tag only needs a template (no extra PHP class), register the view path directly. The **first argument** is the tag suffix (plain name, hyphens allowed; no `::`). The **second argument** is a logical template path and follows `MintView::render()` (optional `namespace::path.php` — see [View namespaces](#view-namespaces-for-template-paths)):
+`x:if` uses the first `{ ... }` in the attribute value as a PHP expression:
 
-```php
-$compiler->registerViewModule('badge', 'components/badge.php');
-$compiler->registerViewModule('acme-pill', 'acme::widgets/pill.php');
+```html
+<p x:if="{ $user !== null }">Logged in as {{{ $user['name'] }}}.</p>
+```
+
+`x:foreach` must be **only** `{ $items as $item }` (whole attribute):
+
+```html
+<ul>
+  <li x:foreach="{ $products as $p }">{{{ $p['name'] }}} — {{ $p['price'] }}</li>
+</ul>
+```
+
+`x:repeat` repeats a block with a **0-based** index:
+
+```html
+<ul>
+  <li x:repeat="{ $count as $i }">Item {{ $i }}</li>
+</ul>
 ```
 
 ```html
-<mod-badge :label="{ $title }">optional slot</mod-badge>
+<li x:repeat="{ 5 as $k }">{{ $k }}</li>
 ```
 
-Props, `:props`, slots, and forwarded HTML attributes behave like class-based modules.
+Raw `<?php … ?>` blocks in templates are preserved through compilation.
 
-### Module names and collisions
+---
 
-Registering the same module suffix twice (`registerModule`, `registerViewModule`, or `registerDirective` with a module directive) throws `InvalidArgumentException`.
+## Components: `<mod-*>` modules
 
-Module tag names do not use `::`; only template **paths** do (see below).
+Register a suffix once on the compiler; the tag becomes `<mod-{suffix}>`. Props use `:name="{ $expr }"` or string literals `:title="{'Hello'}"`. Class-based modules implement `Module::render(Context $context)`.
 
-### View namespaces (for template paths only)
-
-Register extra directories on `MintView` so logical paths like `acme::partials/x.php` resolve. That applies to `render()`, `mint-include`, `mint-extend`, `Module::view()`, and `registerViewModule`; it does not change module tag names.
+**`src/Components/Alert.php`**
 
 ```php
-$view->registerNamespace('acme', __DIR__ . '/vendor/acme/widget/views');
-```
+<?php
 
-Reference templates with a single `::` separator:
+declare(strict_types=1);
 
-```php
-$view->render('acme::partials/pill.php', $data);
-```
+namespace App\Components;
 
-```html
-<mint-include path="acme::partials/pill.php" />
-<mint-extend path="acme::layout.php"></mint-extend>
-```
-
-Relative paths may not use `..` segments; resolved files must stay under the base views path or the registered namespace directory.
-
-### Layouts (`mint-extend`)
-
-Wrap a page (or fragment) in another template using the same `path` convention as `mint-include` (include the `.php` suffix). Everything inside `<mint-extend>…</mint-extend>` is captured and passed to the layout as the **`slot`** key, so the shell can output it with `{{ $slot }}`. Optional `:prop` attributes are merged into the layout data like other template renders.
-
-Use **`mint-section`** / **`mint-yield`** with a matching **`name`** for extra regions (for example a head block).
-
-### Cache
-
-`$cache->forget('index.php')` drops the compiled file for one logical template (the same name you pass to `render()`). `clear()` removes all compiled files under the cache path.
-
-### `:props` shorthand
-
-List simple PHP variables inside braces; each `$name` becomes context key `name` with that variable as the value (like object shorthand in JS):
-
-```html
-<mod-book :props="{$bookTitle, $author, $isbn}" />
-```
-
-Only tokens matching `\$\w+` are allowed (no expressions). You can combine with explicit `:attr` values; **explicit attributes override** the same key from `:props`.
-
-### Module with slots
-
-Template:
-
-```html
-<mod-alert :type="error">
-  some error
-</mod-alert>
-```
-
-Module (slot content is available via `$context->slot()`):
-
-```php
-use Baueri\Mint\Module\Module;
 use Baueri\Mint\Context;
+use Baueri\Mint\Module\Module;
 
 final class Alert extends Module
 {
@@ -261,69 +309,124 @@ final class Alert extends Module
 }
 ```
 
-Template-backed slot module:
+**Registration and render**
 
 ```php
-use Baueri\Mint\Module\Module;
-use Baueri\Mint\Context;
+$compiler->registerModule('alert', \App\Components\Alert::class);
 
-final class Alert extends Module
-{
-    public function render(Context $context): string
-    {
-        return $this->view($context, 'components/alert.php', [
-            'type' => (string) $context->resolve('type', 'info'),
-            // slot is auto-provided as $slot unless you override it
-        ]);
-    }
-}
+echo $view->render('page.php', []);
 ```
 
-`views/components/alert.php`:
+**`views/page.php`**
+
+```html
+<mod-alert :type="{'error'}">
+  Something went wrong.
+</mod-alert>
+
+<mod-alert :type="{'success'}" />
+```
+
+### Template-only modules
+
+When a component is just a view, register the template path:
 
 ```php
-<div class="alert alert-{{ e($type) }}">
-  {{ $slot }}
-</div>
+$compiler->registerViewModule('badge', 'components/badge.php');
 ```
 
-Register:
+```html
+<mod-badge :label="{ $title }" />
+```
+
+Forwarded HTML attributes (not starting with `:` or `x:`) are available as `$attributes` in template-backed modules via `Module::view()` / `$context`.
+
+---
+
+## Multiple view roots (namespaces)
 
 ```php
-$compiler->registerModule('alert', Alert::class);
+$view->registerNamespace('shop', __DIR__ . '/vendor/shop/views');
 ```
+
+Logical paths use a single `::` separator:
+
+```php
+echo $view->render('shop::checkout/summary.php', $data);
+```
+
+```html
+<mint-include path="shop::partials/cart-line.php" />
+<mint-extend path="shop::layouts/minimal.php"></mint-extend>
+```
+
+Paths cannot contain `..` and must resolve inside the base `viewsPath` or the registered namespace directory.
+
+---
+
+## Cache
+
+```php
+$view->cache->forget('pages/home.php'); // drop one compiled template
+$view->cache->clear();                  // empty the cache directory
+```
+
+---
 
 ## CLI
 
-### Clear the cache
+Clear compiled files (path is your cache directory):
 
 ```bash
-vendor/bin/mint clear --cache=var/cache
+vendor/bin/mint clear --cache=var/cache/views
 ```
 
-Removes all compiled files from the cache directory. Safe to run without any knowledge of registered modules.
+---
 
-### Framework integration (`MintCli`)
+## Programmatic CLI (`MintCli`)
 
-`compile-all` and `watch` require a fully configured `MintCompiler` (with all modules registered) to produce correct output. Use `MintCli` directly from within your application's bootstrap or console command where that context is available:
+Use inside your app or custom console command when the compiler already has all modules registered:
 
 ```php
 use Baueri\Mint\MintCli;
 
-// $output is any callable(string): void — e.g. Symfony Console's writeln
-$cli = new MintCli(fn(string $line) => $output->writeln($line));
+$cli = new MintCli(fn (string $line) => print $line . PHP_EOL);
 
-// Clear compiled cache
 $cli->clear($view->cache);
-
-// Pre-compile all templates (modules must be registered on $view->compiler first)
 $cli->compileAll($view->compiler, $view->viewsPath, $view->cache);
-
-// Watch for changes and recompile (modules must be registered on $view->compiler first)
 $cli->watch($view->compiler, $view->viewsPath, $view->cache, pollIntervalMs: 500);
 ```
 
-`MintView::viewsPath`, `MintView::cache`, and `MintView::compiler` are all `public readonly`.
+`$view->viewsPath`, `$view->cache`, and `$view->compiler` are public `readonly` properties.
+
+---
+
+## Lifecycle hooks
+
+```php
+$view->onBeforeRender(function (string $template, string $compiledPath, array &$data): void {
+    // mutate $data before the compiled template runs
+});
+
+$view->onRender(function (string $template, string $compiledPath, float $ms, int $bytes): void {
+    // after successful render; $ms is milliseconds, $bytes is output length
+});
+
+$view->onCompile(function (string $template, string $sourcePath, string $compiledPath): void {
+    // after a template is (re)compiled and written to cache
+});
+```
+
+---
+
+## Extending the compiler
+
+- `MintCompiler::registerDirective(DOMDirective $directive)` — custom elements processed in the DOM pass.
+- `MintCompiler::registerTextDirective(TextDirectiveInterface $directive)` — custom `@`-style transforms on the source string before parsing.
+
+Implement the same interfaces as the built-in directives under `src/View/Directive/`.
+
+---
 
 ## Development
 
@@ -332,6 +435,4 @@ composer install
 vendor/bin/phpunit
 ```
 
-## Examples
-
-See `examples/README.md`.
+Further runnable demos live under [`examples/`](examples/).
