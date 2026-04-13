@@ -4,6 +4,8 @@
 
 **PHP 8.1+**, `ext-dom`, `ext-libxml`.
 
+**Documentation:** [mint.ivanbauer.hu](https://mint.ivanbauer.hu)
+
 ## Install
 
 ```bash
