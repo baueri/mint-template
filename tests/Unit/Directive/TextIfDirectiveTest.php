@@ -30,5 +30,13 @@ final class TextIfDirectiveTest extends TestCase
         $this->assertStringContainsString('<?php else: ?>', $out);
         $this->assertStringContainsString('<?php endif; ?>', $out);
     }
+
+    public function testInnerParenthesesInCondition(): void
+    {
+        $d = new IfDirective();
+        $out = $d->compile('@if($group->exists())YES@endif');
+
+        $this->assertStringContainsString('<?php if($group->exists()): ?>', $out);
+    }
 }
 
