@@ -240,7 +240,7 @@ final class AlertModule extends Module
 {
     public function render(Context $context): string
     {
-        return (string) $context->resolve('type') . ':' . ($context->slot() ?? '');
+        return (string) $context->resolve('type') . ':' . (string) ($context->slot() ?? '');
     }
 }
 

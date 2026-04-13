@@ -88,6 +88,19 @@
                     <code>:props="{$title, $subtitle}"</code> <br/> instead of <br/> <code>:title="{$title} :subtitle="{$subtitle}"</code>.
                 </p>
             </mod-feature-callout>
+
+            <p class="section__meta" style="margin-top: 1.5rem;">Named slots (<code>mint-slot</code>)</p>
+            <mod-slot-panel style="margin-top: 0.75rem;">
+                <mint-slot name="head">
+                    <span class="slot-panel__tag">Named region</span>
+                    <strong class="slot-panel__headline">Aside</strong>
+                </mint-slot>
+                <p>
+                    Default slot content uses <code><?php echo '{{ $slot }}'; ?></code> or
+                    <code><?php echo '{{ $slot->body }}'; ?></code> in the component view; the block above was
+                    passed as <code><?php echo '&lt;mint-slot name="head"&gt;'; ?></code>.
+                </p>
+            </mod-slot-panel>
         </div>
     </section>
 

@@ -54,6 +54,7 @@ $compiler = new MintCompiler($views);
 $compiler->registerModule('alert', Alert::class);
 $compiler->registerModule('stat-tile', StatTile::class);
 $compiler->registerModule('feature-callout', FeatureCallout::class);
+$compiler->registerViewModule('slot-panel', 'components/slot-panel.php');
 
 $view = new MintView($views, new Cache($cachePath), $compiler);
 

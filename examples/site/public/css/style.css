@@ -426,6 +426,70 @@ body {
     border-radius: 4px;
 }
 
+/* Named-slot demo (mod-slot-panel) */
+.slot-panel {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-elevated);
+    border-radius: var(--radius);
+    border: 1px solid rgb(13 148 136 / 22%);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.slot-panel__head {
+    margin: 0;
+    padding: 0.85rem 1.15rem;
+    background: linear-gradient(90deg, var(--accent-soft) 0%, rgb(204 251 241 / 35%) 100%);
+    border-bottom: 1px solid rgb(13 148 136 / 15%);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+.slot-panel__tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-dark);
+    background: rgb(255 255 255 / 70%);
+    padding: 0.2rem 0.45rem;
+    border-radius: 4px;
+}
+
+.slot-panel__headline {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.slot-panel__body {
+    margin: 0;
+    padding: 1rem 1.15rem 1.2rem;
+    font-size: 0.95rem;
+    color: var(--ink-muted);
+}
+
+.slot-panel__body p {
+    margin: 0 0 0.65rem;
+}
+
+.slot-panel__body p:last-child {
+    margin-bottom: 0;
+}
+
+.slot-panel__body code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: rgb(13 148 136 / 10%);
+    padding: 0.12em 0.35em;
+    border-radius: 4px;
+}
+
 /* Panel / text directive demo */
 .panel-ok {
     margin: 0;

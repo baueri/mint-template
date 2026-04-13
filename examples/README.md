@@ -18,6 +18,7 @@ All examples are plain PHP scripts that render templates using `Baueri\Mint\Mint
 php examples/01-basic.php
 php examples/02-components.php
 php examples/03-layout-wrap.php
+php examples/04-named-slots.php
 ```
 
 Each example writes compiled templates to `examples/var/cache-*`.

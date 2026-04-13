@@ -15,6 +15,7 @@ use Baueri\Mint\Directive\DOM\IncludeDirective;
 use Baueri\Mint\Directive\DOM\RepeatDirective;
 use Baueri\Mint\Directive\DOM\SectionDirective;
 use Baueri\Mint\Directive\DOM\ExtendDirective;
+use Baueri\Mint\Directive\DOM\MintSlotDirective;
 use Baueri\Mint\Directive\DOM\YieldDirective;
 use Baueri\Mint\Directive\Text\IfDirective as TextIfDirective;
 use Baueri\Mint\Directive\Text\TextDirectiveInterface;
@@ -56,7 +57,8 @@ class MintCompiler
             new SectionDirective(),
             new YieldDirective(),
             new IncludeDirective(),
-            new ExtendDirective()
+            new ExtendDirective(),
+            new MintSlotDirective(),
         ];
 
         $this->textDirectives = [
@@ -309,8 +311,12 @@ class MintCompiler
                         || ($directive instanceof AbstractModuleDirective && ! $directive->hasSlotBody($node));
 
                     if (! $skipChildren) {
-                        foreach ($node->childNodes as $child) {
-                            $php .= $this->walk($child);
+                        if ($directive instanceof AbstractModuleDirective && $directive->hasSlotBody($node)) {
+                            $php .= $directive->compileChildrenWithSlots($node);
+                        } else {
+                            foreach ($node->childNodes as $child) {
+                                $php .= $this->walk($child);
+                            }
                         }
                     }
 

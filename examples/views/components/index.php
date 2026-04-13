@@ -14,6 +14,11 @@
     <mod-alert :type="error" style="border:1px solid red;">
       Something went wrong for {{ $user['name'] }}.
     </mod-alert>
+
+    <mod-panel>
+      <mint-slot name="head">Named slot (header)</mint-slot>
+      <p>Default slot: panel body for {{ $user['name'] }}.</p>
+    </mod-panel>
   </div>
 </mint-extend>
 

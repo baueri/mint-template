@@ -319,6 +319,69 @@ final class DirectivesRenderTest extends TestCase
         $this->assertStringContainsString('<p>Hi</p>', $out);
     }
 
+    public function testViewModuleReceivesNamedSlotsFromMintSlot(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put(
+            $viewsDir,
+            'components/panel.php',
+            '<article class="panel"><header>{{ $slot->head }}</header><div class="body">{{ $slot }}</div></article>'
+        );
+        TempViews::put(
+            $viewsDir,
+            'panel-page.php',
+            '<mod-panel><mint-slot name="head"><strong>Title</strong></mint-slot><p>Main</p></mod-panel>'
+        );
+
+        $compiler = new MintCompiler($viewsDir);
+        $compiler->registerViewModule('panel', 'components/panel.php');
+
+        $out = $this->render($compiler, $viewsDir, $cacheDir, 'panel-page.php');
+
+        $this->assertStringContainsString('<strong>Title</strong>', $out);
+        $this->assertStringContainsString('<p>Main</p>', $out);
+        $this->assertStringContainsString('<header>', $out);
+    }
+
+    public function testNamedSlotsWithSameNameConcatenate(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put($viewsDir, 'components/twice.php', '<div>{{ $slot->a }}</div>');
+        TempViews::put(
+            $viewsDir,
+            'twice-page.php',
+            '<mod-twice><mint-slot name="a">1</mint-slot><mint-slot name="a">2</mint-slot></mod-twice>'
+        );
+
+        $compiler = new MintCompiler($viewsDir);
+        $compiler->registerViewModule('twice', 'components/twice.php');
+
+        $out = $this->render($compiler, $viewsDir, $cacheDir, 'twice-page.php');
+        $this->assertStringContainsString('12', $out);
+    }
+
+    public function testPhpModuleUsesSlotNamed(): void
+    {
+        $viewsDir = TempViews::makeDir('mint_views');
+        $cacheDir = TempViews::makeDir('mint_cache');
+
+        TempViews::put(
+            $viewsDir,
+            'slotnamed-page.php',
+            '<mod-slotnamed><mint-slot name="head">H</mint-slot>B</mod-slotnamed>'
+        );
+
+        $compiler = new MintCompiler($viewsDir);
+        $compiler->registerModule('slotnamed', SlotNamedModule::class);
+
+        $out = $this->render($compiler, $viewsDir, $cacheDir, 'slotnamed-page.php');
+        $this->assertSame('[H|B]', trim($out));
+    }
+
     public function testViewModuleRendersTemplateWithPropsAndSlot(): void
     {
         $viewsDir = TempViews::makeDir('mint_views');
@@ -405,7 +468,7 @@ final class GreetModule extends Module
     public function render(Context $context): string
     {
         $name = $context->resolve('name', 'unknown');
-        $slot = $context->slot() ?? '';
+        $slot = (string) ($context->slot() ?? '');
         return "Hi {$name} {$slot}";
     }
 }
@@ -433,5 +496,15 @@ final class BookShellModule extends Module
     public function render(Context $context): string
     {
         return $this->view($context, 'components/book-shell.php', $context->all());
+    }
+}
+
+final class SlotNamedModule extends Module
+{
+    public function render(Context $context): string
+    {
+        $s = $context->slot();
+
+        return '[' . ($s !== null ? $s->head : '') . '|' . (string) ($s ?? '') . ']';
     }
 }

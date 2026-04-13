@@ -36,6 +36,7 @@ final class Alert extends Module
 $compiler = new MintCompiler($views);
 $compiler->registerModule('user-card', UserCard::class);
 $compiler->registerModule('alert', Alert::class);
+$compiler->registerViewModule('panel', 'components/panel.php');
 
 $view = new MintView($views, new Cache($cache), $compiler);
 

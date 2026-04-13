@@ -8,10 +8,14 @@ class Context
 {
     protected array $data;
     protected MintView $view;
-    protected ?string $slot;
+    protected ?Slot $slot;
 
-    public function __construct(array $data, MintView $view, ?string $slot = null)
+    public function __construct(array $data, MintView $view, Slot|string|null $slot = null)
     {
+        if (is_string($slot)) {
+            $slot = new Slot(['body' => $slot]);
+        }
+
         $this->data = $data;
         $this->view = $view;
         $this->slot = $slot;
@@ -27,7 +31,11 @@ class Context
         return $this->data;
     }
 
-    public function slot(): ?string
+    /**
+     * Slot bag for the module body (default + named mint-slot regions), or null when the module
+     * has no slot body (self-closing).
+     */
+    public function slot(): ?Slot
     {
         return $this->slot;
     }
@@ -39,8 +47,8 @@ class Context
 
     public function withSlot(array $data): array
     {
-        if ($this->slot !== null && !array_key_exists('slot', $data)) {
-            $data['slot'] = $this->slot;
+        if (! array_key_exists('slot', $data)) {
+            $data['slot'] = $this->slot ?? new Slot();
         }
 
         return $data;

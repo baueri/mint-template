@@ -9,6 +9,7 @@ use Baueri\Mint\Directive\DOM\ViewModuleDirective;
 use Baueri\Mint\Directive\DOM\IfDirective;
 use Baueri\Mint\Directive\DOM\IncludeDirective;
 use Baueri\Mint\Directive\DOM\ExtendDirective;
+use Baueri\Mint\Directive\DOM\MintSlotDirective;
 use Baueri\Mint\Directive\DOM\YieldDirective;
 use DOMDocument;
 use PHPUnit\Framework\TestCase;
@@ -105,7 +106,16 @@ final class DomDirectiveUnitTest extends TestCase
         $d = new CustomModuleDirective('alert', 'Some\\Class', $compiler);
         $this->assertFalse($d->isSelfClosing());
         $this->assertTrue($d->hasSlotBody($node));
-        $this->assertStringContainsString('ob_start', $d->compileOpen($node));
+        $this->assertSame('', $d->compileOpen($node));
+
+        $tmp = sys_get_temp_dir() . '/mint_modslot_' . bin2hex(random_bytes(8));
+        mkdir($tmp);
+        file_put_contents($tmp . '/m.php', '<mod-alert>Hi</mod-alert>');
+        $compiler->registerModule('alert', 'Some\\Class');
+        $php = $compiler->compile($tmp . '/m.php');
+        $this->assertStringContainsString('$__mint_slot_stack', $php);
+        $this->assertStringContainsString('ob_start', $php);
+        $this->assertStringContainsString('array_pop($__mint_slot_stack)', $php);
     }
 
     public function testViewModuleDirectiveEmitsViewRender(): void
@@ -135,10 +145,19 @@ final class DomDirectiveUnitTest extends TestCase
 
         $compiler = new \Baueri\Mint\MintCompiler(sys_get_temp_dir());
         $d = new ViewModuleDirective('link', 'components/link.php', $compiler);
-        $this->assertStringContainsString('ob_start', $d->compileOpen($node));
+        $this->assertSame('', $d->compileOpen($node));
         $close = $d->compileClose($node);
-        $this->assertStringContainsString('ob_get_clean', $close);
+        $this->assertStringContainsString('array_pop($__mint_slot_stack)', $close);
         $this->assertStringContainsString('$__mint_props->view()->render(', $close);
+
+        $tmp = sys_get_temp_dir() . '/mint_vmslot_' . bin2hex(random_bytes(8));
+        mkdir($tmp);
+        file_put_contents($tmp . '/v.php', '<mod-link>X</mod-link>');
+        $compiler2 = new \Baueri\Mint\MintCompiler($tmp);
+        $compiler2->registerViewModule('link', 'components/link.php');
+        $compiled = $compiler2->compile($tmp . '/v.php');
+        $this->assertStringContainsString('$__mint_slot_stack', $compiled);
+        $this->assertStringContainsString('ob_start', $compiled);
     }
 
     public function testCustomModulePropsShorthandExpandsToContextEntries(): void
@@ -217,6 +236,24 @@ final class DomDirectiveUnitTest extends TestCase
         $this->assertStringContainsString("'a' =>", $php);
         $this->assertStringContainsString('$override', $php);
         $this->assertStringContainsString("'c' => \$c", $php);
+    }
+
+    public function testMintSlotDirectiveThrowsWhenNotInsideModuleBody(): void
+    {
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        libxml_use_internal_errors(true);
+        $dom->loadHTML(
+            '<?xml encoding="UTF-8"><mint-slot name="head"></mint-slot>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        $node = $dom->documentElement;
+
+        $d = new MintSlotDirective();
+        $this->assertTrue($d->supports($node));
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('only appear as a direct child');
+        $d->compileOpen($node);
     }
 
     public function testMintExtendDirectiveMergesPropsIntoLayoutRender(): void

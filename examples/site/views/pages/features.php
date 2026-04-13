@@ -11,11 +11,11 @@
         <ul class="feature-list">
             <li>
                 <h2 class="feature-list__title">Layouts with <code>mint-extend</code></h2>
-                <p>Buffer page content, pass it to the layout as <code>{{ $slot }}</code>, and render navigation once.</p>
+                <p>Buffer page content, pass it to the layout as <code><?php echo '{{ $slot }}'; ?></code>, and render navigation once.</p>
             </li>
             <li>
                 <h2 class="feature-list__title">Sections &amp; yields</h2>
-                <p><code>mint-yield</code> pulls named fragments (from <code>mint-section</code>) into the layout; the default body uses <code>{{ $slot }}</code>.</p>
+                <p><code>mint-yield</code> pulls named fragments (from <code>mint-section</code>) into the layout; the default body uses <code><?php echo '{{ $slot }}'; ?></code>.</p>
             </li>
             <li>
                 <h2 class="feature-list__title">Conditional &amp; loops</h2>
@@ -28,6 +28,15 @@
             <li>
                 <h2 class="feature-list__title">Custom modules</h2>
                 <p>Register <code>mod-*</code> tags that map to PHP classes; pass props with <code>:</code> attributes and optional slots.</p>
+            </li>
+            <li>
+                <h2 class="feature-list__title">Named module slots</h2>
+                <p>
+                    Inside a module body, <code><?php echo '&lt;mint-slot name="…"&gt;'; ?></code> captures regions; the view receives a
+                    <code>Slot</code> object (<code><?php echo '{{ $slot }}'; ?></code> /
+                    <code><?php echo '{{ $slot->body }}'; ?></code> for the default,
+                    <code><?php echo '{{ $slot->head }}'; ?></code> for a named region). See the showcase home page.
+                </p>
             </li>
             <li>
                 <h2 class="feature-list__title">Template includes</h2>

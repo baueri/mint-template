@@ -1,6 +1,6 @@
 # Mint example site
 
-Small styled demo: layouts (`mint-extend`, `{{ $slot }}`), named sections (`mint-yield`), DOM directives (`x:if`, `x:foreach`), text directives (`@if`), and registered modules (`mod-alert`, `mod-stat-tile`, `mod-feature-callout`).
+Small styled demo: layouts (`mint-extend`, `{{ $slot }}`), named sections (`mint-yield`), DOM directives (`x:if`, `x:foreach`), text directives (`@if`), registered modules (`mod-alert`, `mod-stat-tile`, `mod-feature-callout`), and **named module slots** (`mint-slot`, `mod-slot-panel` on the home page).
 
 ## Run locally
 

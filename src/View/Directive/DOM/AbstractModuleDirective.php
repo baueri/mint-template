@@ -164,7 +164,7 @@ abstract class AbstractModuleDirective implements DOMDirective
                 . $render . "\n        ?>\n";
         }
 
-        return "<?php ob_start(); ?>\n";
+        return '';
     }
 
     public function compileClose(DOMElement $node): string
@@ -178,12 +178,66 @@ abstract class AbstractModuleDirective implements DOMDirective
         $render = $this->renderAfterContextPhp();
 
         return '        <?php' . "\n            "
-            . '$__mint_slot = ob_get_clean();' . "\n\n            "
+            . '$__mint_frame = array_pop($__mint_slot_stack);' . "\n            "
+            . '$__mint_mod_slot = new \\Baueri\\Mint\\Slot(\\array_merge(' . "\n                "
+            . '$__mint_frame[\'named\'],' . "\n                "
+            . '[\'body\' => $__mint_frame[\'def_buf\']]' . "\n            "
+            . '));' . "\n\n            "
             . $attrBlock . "\n            "
             . '$__mint_props = new \Baueri\Mint\Context(\array_merge(' . "\n                "
             . "['attributes' => \$__mint_attributes],\n                [\n                    "
-            . $propsArray . "\n                ]\n            ), \$__mint_view, \$__mint_slot);\n\n            "
+            . $propsArray . "\n                ]\n            ), \$__mint_view, \$__mint_mod_slot);"
+            . "\n\n            "
             . $render . "\n        ?>\n";
+    }
+
+    /**
+     * Compile module children: default slot is all content outside mint-slot; each mint-slot name
+     * captures its inner HTML. Uses a stack so nested modules do not clobber buffers.
+     */
+    public function compileChildrenWithSlots(DOMElement $node): string
+    {
+        $php = '<?php $__mint_slot_stack = $__mint_slot_stack ?? [];' . "\n"
+            . '$__mint_slot_stack[] = [\'named\' => [], \'def_buf\' => \'\'];' . "\n"
+            . 'ob_start(); ?>' . "\n";
+
+        foreach ($node->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->tagName === 'mint-slot') {
+                $name = trim($child->getAttribute('name'));
+                if ($name === '') {
+                    throw new RuntimeException('mint-slot requires a non-empty name attribute');
+                }
+                if ($name === 'body') {
+                    throw new RuntimeException(
+                        'mint-slot name="body" is reserved for the default slot; omit mint-slot for main content.'
+                    );
+                }
+                $namePhp = var_export($name, true);
+
+                $php .= '<?php $__mint_sf = array_key_last($__mint_slot_stack);' . "\n"
+                    . '$__mint_slot_stack[$__mint_sf][\'def_buf\'] .= ob_get_clean();' . "\n"
+                    . 'ob_start(); ?>' . "\n";
+
+                foreach ($child->childNodes as $slotChild) {
+                    $php .= $this->compiler->compileNode($slotChild);
+                }
+
+                $php .= '<?php $__mint_sf = array_key_last($__mint_slot_stack);' . "\n"
+                    . '$__mint_slot_stack[$__mint_sf][\'named\'][' . $namePhp . '] = '
+                    . '($__mint_slot_stack[$__mint_sf][\'named\'][' . $namePhp . '] ?? \'\') . ob_get_clean();' . "\n"
+                    . 'ob_start(); ?>' . "\n";
+
+                continue;
+            }
+
+            $php .= $this->compiler->compileNode($child);
+        }
+
+        $php .= '<?php $__mint_sf = array_key_last($__mint_slot_stack);' . "\n"
+            . '$__mint_slot_stack[$__mint_sf][\'def_buf\'] .= ob_get_clean();' . "\n"
+            . '?>' . "\n";
+
+        return $php;
     }
 
     public function isSelfClosing(): bool
